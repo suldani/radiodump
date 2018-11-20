@@ -1,0 +1,9 @@
+{
+	"CFG_PROGRAM_STIME" : "200000",
+	"CFG_REC_STT_TIME"  : "194500",
+	"CFG_REC_END_TIME"  : "214800",
+	"CFG_TEMP_DIR"      : "./",
+	"CFG_TARGET_DIR"    : "./",
+	"CFG_DAEMON_YN"     : "Y",
+	"CFG_HB_MIN"        : 1
+}
