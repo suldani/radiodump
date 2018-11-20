@@ -16,8 +16,8 @@ Asus Router에서 entware, ffmpeg, python의 라이브러리를 사용
 2. sh(ash)과 python의 시각이 지역경도만큼의 차이가 있다.(9시간)
 3. 라디오 정보를 가져오는 중 오류가 생기면 강제종료.
 4. 20180809 현재 화질 500Kbps이며 그 이하로 저장시엔 Router reboot.
-
-실행
+---------------------------------------------------------------------
+리눅스 실행
 1. 대몬 : nohup recd.py >/dev/null 2>&1 &
 2. 1회  : recd.py [ 시작시간[HHMMSS] 종료시간[HHMMSS] ]
 
@@ -29,20 +29,35 @@ daemon설치방법
 2. /jffs/scripts/unmount 파일에 아래 내용 추가
         killall python
 3. reboot 후 ps | grep python으로 실행중인지 확인한다.
+---------------------------------------------------------------------
+윈도우 실행 설치
+https://ffmpeg.zeranoe.com/builds/ 윈64비트 다운 및 설치
+https://www.python.org/downloads/ Python 2.7.15 윈도우64용 다운, ffmpeg.exe파일  C:\Python27\ 에 복사
+
+cmd : 콘솔 실행 및 아래 4줄 명령어 입력하여 파이썬 모듈 설치
+      cd C:\Python27\Scripts
+      pip install requests
+      pip install beautifulsoup4
+      pip install pytz
+이후 단축아이콘 생성
+C:\Python27\python.exe 바로가기아이콘 바탕화면등에 생성
+오른쪽 마우스 클릭 후 속성
+시작위치 : C:\Python27
+대상  : C:\Python27\python.exe recd.py
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-# 목195740 215740
+
 #######################################################################
 cfg_dft_name      = u'AKMU_Suhyun VolumeUp'
-cfg_bora_url      = 'http://onair.kbs.co.kr/index.html?sname=onair&stype=live&ch_code=25&ch_type=radioList'
+cfg_bora_url      = 'http://onair.kbs.co.kr/?sname=onair&stype=live&ch_code=25&ch_type=radioList'
 #cfg_program_code = 'R2018-0086'
 cfg_program_stime = '200000'
 cfg_temp_dir      = '/opt/usr/'
 cfg_target_dir    = '/mnt/WD8TB/_AKMU/6-2.RadioDJ_VolumeUp/'
-cfg_stt_time      = '195320' #시낙믿
-cfg_end_time      = '215900' #시낙믿
-#cfg_stt_time      = '195740'
-#cfg_end_time      = '215700'
+cfg_stt_time      = '195320' #org_tm : '195740'
+cfg_end_time      = '215900' #org_tm : '215700'
 cfg_hb_seconds    = 60
+cfg_win_temp_dir  = './'
+cfg_win_target_dir= './'
 #######################################################################
 
 # pip install module
@@ -50,6 +65,7 @@ import requests
 import re
 import json
 import datetime
+import platform
 import time
 import os
 import sys
@@ -58,6 +74,9 @@ import logging.handlers
 from bs4      import BeautifulSoup
 from pytz     import timezone
 
+if platform.system() == 'Windows' :
+	cfg_temp_dir   = cfg_win_temp_dir  
+	cfg_target_dir = cfg_win_target_dir
 
 def init_log(bFile,bScrn) :
 	# 로거 생성
@@ -110,7 +129,7 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 
 	#1-1. 원천정보에서 오픈스튜디오 정보 설정
 	try :
-		schl_rinf = re.findall(r'var table = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
+		schl_rinf = re.findall(r'var next = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
 		schl_jinf = json.loads(schl_rinf.replace('\\',''))
 		radio_open_studio = 0
 		for i in range( len ( schl_jinf['data'] ) ) :
@@ -137,7 +156,7 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 	#3. 라디오or보라별 스트리밍 정보 설정
 	rec_flnm = rec_ddtm + " " + cfg_dft_name + (".mp4" if ( radio_open_studio == 1 ) else ".m4a")                              # 파일명
 	rec_time = int((datetime.datetime.strptime( rec_end_time , '%H%M%S' ) - datetime.datetime.strptime( nNow , '%H%M%S' )).total_seconds())
-	rec_call = ( "/opt/bin/ffmpeg -i \"%s\" -y -t %d -c copy %s\"%s\"" ) % ( rec_url , rec_time , cfg_temp_dir , rec_flnm ) #  -loglevel error
+	rec_call = ( "ffmpeg -i \"%s\" -y -t %d -c copy %s\"%s\"" ) % ( rec_url , rec_time , cfg_temp_dir , rec_flnm ) #  -loglevel error
 	logger.info( ":::::::::::::::::::::::::::::::::::::::::::::::::::::::::" )
 	logger.info( "Recoding_info : rec_call [%s]" % rec_call )
 	logger.info( "Recoding_info : rec_url  [%s]" % rec_url  )
@@ -156,13 +175,14 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 
 	#5. 파일 이동
 	mv_call = "mv %s\"%s\" %s" % ( cfg_temp_dir , rec_flnm , cfg_target_dir )
-	if os.system( mv_call.encode('utf-8') ) != 0 :
-		logger.error( "Don't Move file. Call [%s]" % mv_call )
-		return 200000
+	if cfg_temp_dir != cfg_target_dir :
+		if os.system( mv_call.encode('utf-8') ) != 0 :
+			logger.error( "Don't Move file. Call [%s]" % mv_call )
+			return 200000
 	logger.info( "Move Success.[%s/%s]" % ( rec_flnm , cfg_target_dir ) )
 	logger.info( ":::::::::::::::::::::::::::::::::::::::::::::::::::::::::" )
 	time.sleep( 30 )
-	return 0
+	return 300000
 
 
 if __name__ == "__main__":
@@ -179,7 +199,10 @@ if __name__ == "__main__":
 	logger.info( "KBS Cool FM 891MHz Radio Streaming Recoder." )
 
 	# 계속 녹화
-	while rec_kbs_radio( rec_stt_time , rec_end_time ) >= 0 :
+	while True :
+		rtn = rec_kbs_radio( rec_stt_time , rec_end_time )
+		if rtn >= 200000 :
+			break
 		# 시간 지정시 1회 실행
 		if len(sys.argv) > 2 :
 			break	# 계속 녹화
