@@ -47,7 +47,7 @@ C:\Python27\python.exe 바로가기아이콘 바탕화면등에 생성
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 #######################################################################
-cfg_dft_name      = u'AKMU_Suhyun VolumeUp'
+cfg_dft_name      = u'AKMU_Suhyun_VolumeUp'
 cfg_bora_url      = 'http://onair.kbs.co.kr/?sname=onair&stype=live&ch_code=25&ch_type=radioList'
 #cfg_program_code = 'R2018-0086'
 cfg_program_stime = '200000'
@@ -126,11 +126,10 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 		logger.error( "원천정보를 가져오는 중 오류가 발생했습니다." )
 		return -1
 
-
 	#1-1. 원천정보에서 오픈스튜디오 정보 설정
 	try :
 		schl_rinf = re.findall(r'var next = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
-		schl_jinf = json.loads(schl_rinf.replace('\\',''))
+		schl_jinf = json.loads(schl_rinf.replace('\\"','"').replace('\\\\u','\\u').replace('\/','/'),encoding='utf-8')
 		radio_open_studio = 0
 		for i in range( len ( schl_jinf['data'] ) ) :
 			if schl_jinf['data'][i]['program_stime'] == cfg_program_stime :
@@ -148,6 +147,10 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 		scrm_jdat = json.loads(scrm_rdat.replace('\\',''))
 		rec_url  = scrm_jdat['channel_item'][radio_open_studio]['service_url']                                                     # 보라url
 		rec_ddtm = scrm_jdat['cached_datetime'][2:10].replace('-','') + "_" + scrm_jdat[u'cached_datetime'][11:].replace(':','')   # 날짜
+		if radio_open_studio == 1 :
+			kong_html = requests.get(rec_url)
+			rec_url = "http://kong.kbskme.gscdn.com/smart_bora_2fm/_definst_/smart_bora_2fm_5.stream/" + kong_html.text.splitlines()[3]
+
 	except :
 		logger.error( "스트리밍 정보 파싱에서 실패했습니다." )
 		return -3
@@ -179,7 +182,7 @@ def rec_kbs_radio( rec_stt_time , rec_end_time ) :
 		if os.system( mv_call.encode('utf-8') ) != 0 :
 			logger.error( "Don't Move file. Call [%s]" % mv_call )
 			return 200000
-	logger.info( "Move Success.[%s/%s]" % ( rec_flnm , cfg_target_dir ) )
+	logger.info( "Move Success.[%s/%s]" % ( cfg_target_dir, rec_flnm ) )
 	logger.info( ":::::::::::::::::::::::::::::::::::::::::::::::::::::::::" )
 	time.sleep( 30 )
 	return 300000
@@ -194,7 +197,7 @@ if __name__ == "__main__":
 		rec_end_time = cfg_end_time
 
 	# 로그 초기화
-	logger = init_log(True,False)
+	logger = init_log(True,True)
 	logger.info( "========================= Start =========================" )
 	logger.info( "KBS Cool FM 891MHz Radio Streaming Recoder." )
 
