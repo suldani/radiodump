@@ -2,23 +2,17 @@
 # -*- coding: utf-8 -*-
 
 #######################################################################
-rec_dft_name = u'AKMU_Suhyun VolumeUp.mp4'
-rec_bora_url = "http://myk.kbs.co.kr/live_popup?chid=25&chtype=RADIO"
-#rec_bora_url = "http://myk.kbs.co.kr/live/radio/25"
-#google_cloud_platform_api_key = 'AIzaSyBSNGg7aQt0o5q6GPKShP3gegoxzKiZjnA'
-rec_stt_time = 195900
-rec_end_time = 215700+3
+rec_dft_name = u'[F]AKMU_Suhyun VolumeUp'
+rec_bora_url = "http://onair.kbs.co.kr/index.html?sname=onair&stype=live&ch_code=25&ch_type=radioList&openradio=on"
+rec_stt_time = 195700
+rec_end_time = 215700+1
 rec_try_cnt  = 10
-RTMP_INFO    = {
-	'service_url': 'rtmp://live.kbskme.gscdn.com/bora_2fm/_definst_/bora_2fm_5.stream' ,
-	'channel_code': '25' ,
-	'channel_type': 'RADIO' ,
-	'isPopup': 'true'
-}
 #######################################################################
 
 # pip install module
 import requests
+import re
+import json
 import datetime
 import time
 import os
@@ -59,62 +53,6 @@ logger.info( "KBS Cool FM 891MHz Visual Radio Recoder." )
 logger.info( "  rec_stt_time [%d]" % rec_stt_time )
 logger.info( "  rec_end_time [%d]" % rec_end_time )
 
-if len(sys.argv) > 2 :
-	pass
-else :
-	test =1 
-	if test == 0 :
-		#0. 보이는라디오 일정 확인
-		dBora_schl = requests.get('http://kong.kbs.co.kr/bora_admin/boraradio/get_bora_schedule_JSON.php').json()
-		lChannel   = dBora_schl['2FM']['PM']
-		for i in range( len ( lChannel ) ) :
-			if lChannel[i]['START_TIME'] == '20:00' :
-				break
-		nTodayWeek = ( datetime.datetime.today().weekday()+1 ) * 10
-		if lChannel[i]['DAY_NUMBERS'].split(',').count( str(nTodayWeek) ) == 0 :
-			logger.error( "Today is not a 'VisibleRadio' broadcast date. [%d]" % nTodayWeek )
-			logger.error( "VisibleRadio Schedule                         [%s]" % lChannel[i]['DAY_NUMBERS'] )
-			exit(-1)
-	else :
-		#0. 보이는라디오 정보 획득
-		Chl_mtitle = ''
-		Chl_stitle = ''
-		Chl_person = ''
-		Chl_story  = ''
-		Chl_opn_yn = ''
-				
-#		dBora_schl = requests.get('http://myk.kbs.co.kr/broadcast_live/channel_master_items_json').json()
-#		Chl_mtitle = dBora_schl['live_episode_items'][30]['now_schedule_item']['program_title']
-#		Chl_opn_yn = dBora_schl['live_episode_items'][30]['now_schedule_item']['radio_open_studio_yn']
-#		try :
-#			Chl_stitle = dBora_schl['live_episode_items'][30]['now_schedule_item']['subtitle']
-#		except :
-#			pass
-#		try:
-#			Chl_person = dBora_schl['live_episode_items'][30]['now_schedule_item']['broadcast_persons_names']
-#		except :
-#			pass
-#		try :
-#			Chl_story  = dBora_schl['live_episode_items'][30]['now_schedule_item']['storyline']
-#		except :
-#			pass
-
-#		dBora_schl = requests.get('http://myk.kbs.co.kr/broadcast/broadcast_episode_read').json()
-#		Chl_mtitle = dBora_schl['program_title']
-#		Chl_stitle = dBora_schl['subtitle']
-#		Chl_person = dBora_schl['broadcast_persons_names']
-#		Chl_story  = dBora_schl['storyline']
-#		Chl_opn_yn = dBora_schl['radio_open_studio_yn']
-#		
-#		print Chl_mtitle.encode('utf-8')
-#		print Chl_stitle.encode('utf-8')
-#		print Chl_person.encode('utf-8')
-#		print Chl_story .encode('utf-8')
-#		print Chl_opn_yn.encode('utf-8')
-#		exit (0)
-
-
-
 while True :
 	#0. 공유기 py시각과 cron(sh)시각의 보정
 	sTm = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
@@ -143,32 +81,32 @@ while True :
 	nRecCnt += 1
 
 
-	#1. 세션의 pk값 획득
-	ses      = requests.Session()
-	pk_req   = ses.get(rec_bora_url)
-	pk_soup  = BeautifulSoup(pk_req.text, 'html.parser')
-	pk_token = pk_soup.find("input" , { "name" : "pk_token" } )
+	#1. KBS CoolFM 원천정보 획득
+	bora_html = requests.get(rec_bora_url)
+	bora_soup = BeautifulSoup(bora_html.text, 'html.parser')
 
 
-	#2. pk값을 RTMP_INFO 딕셔너리에 추가
-	RTMP_INFO['pk_token'] = pk_token['value']
+	#2. 원천정보 크래핑/가공하여 라디오 기초정보 설정
+	bora_data = re.findall(r'var channel = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
+	bora_req  = json.loads(bora_data.replace('\\',''))
 
 
-	#3. RTMP 주소 획득
-	bora_req = ses.post('http://myk.kbs.co.kr/api/kp_cms/live_stream', data=RTMP_INFO).json()
-
-
-	#4. RTMP 저장
-	rec_url  = bora_req[u'real_service_url']                                              # url
-	rec_ddtm = bora_req[u'server_datetime'][2:8] + "_" + bora_req[u'server_datetime'][8:] # 날짜
-	rec_flnm = rec_ddtm + " " + rec_dft_name
+	#3. 라디오or보라별 스트리밍 정보 설정
+	openstudio_yn = 1
+	rec_url  = bora_req['channel_item'][openstudio_yn]['service_url']                                                        # 보라url
+	rec_ddtm = bora_req['cached_datetime'][2:10].replace('-','') + "_" + bora_req[u'cached_datetime'][11:].replace(':','')   # 날짜
+	rec_flnm = rec_ddtm + " " + rec_dft_name + (".mp4" if ( openstudio_yn == 1 ) else ".m4a")                                # 파일명
 	rec_time = int((datetime.datetime.strptime(str(rec_end_time), '%H%M%S') - datetime.datetime.strptime(str(sTm), '%H%M%S' )).total_seconds())
-	rec_call = ( "/opt/bin/rtmpdump -r \"%s\" -o \"/opt/usr/%s\" -v -B %d" ) % ( rec_url , rec_flnm , rec_time )
+	rec_call = ( "/opt/bin/ffmpeg -i \"%s\" -y -t %d -c copy \"/opt/usr/%s\"" ) % ( rec_url , rec_time , rec_flnm )
 	logger.info( "Recoding_info : rec_url  [%s... ]" % rec_url[:55] )
 	logger.info( "Recoding_info : rec_ddtm [%s]"     % rec_ddtm     )
 	logger.info( "Recoding_info : rec_flnm [%s]"     % rec_flnm     )
-	logger.info( "Recoding_info : rec_time [%d]"     % rec_time     )
+	logger.info( "Recoding_info : rec_time [%s]"     % rec_time     )
 	logger.info( "Start Recoding..." )
+	print rec_call
+
+
+	#4. 스트리밍 저장
 	if os.system( rec_call.encode('utf-8') ) != 0 :
 		logger.error( "Recoding_info : rec_call [%s]" % rec_call )
 		continue
