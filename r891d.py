@@ -123,7 +123,6 @@ def WaitingForRecord( sRecSttTime , sRecEndTime ):
 	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
 	if  ( int(sRecSttTime) >  int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) and int(sCurrentTime) < int(sRecSttTime) ) ) \
 		or ( int(sRecSttTime) <= int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) or  int(sCurrentTime) < int(sRecSttTime) ) ) :
-		dRtn = { 'nSleepTime' : 0 , 'sCurrentTime' : sCurrentTime }
 		nSleepTime = 0
 	else :
 		nSleepTime = int(( datetime.datetime.strptime( sRecSttTime , '%H%M%S' )
@@ -169,10 +168,11 @@ def GetRadioScheduleAndReady( sRecSttTime , sRecEndTime , bReady ) :
 	# 스트리밍 정보 설정
 	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
 	strm_time    = ( datetime.datetime.strptime( sRecEndTime  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( sRecEndTime < sCurrentTime ) else 0 )
+	dRadio891Data['strm_time'] = strm_time
 	dRadio891Data['strm_ddtm'] = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
 	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".mp4" if( dRadio891Data['strm_optn_yn'] == 'Y') else ".m4a" )
 	dRadio891Data['strm_url' ]  =    ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
-	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( CFG_TEMP_DIR , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
+	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y  -loglevel warning -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( CFG_TEMP_DIR , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
 
 	logger.info ( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
 	logger.info ( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 	init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
 	# 방송정보 확인
-	dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , 0 )
+	dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , False )
 	if dRadio891Data == False :
 		sys.exit(0)
 
@@ -237,7 +237,7 @@ if __name__ == "__main__":
 			continue
 
 		# 녹화정보 최종 설정
-		dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , 1 )
+		dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , True )
 		if dRadio891Data == False :
 			break
 
