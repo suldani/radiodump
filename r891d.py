@@ -47,7 +47,7 @@ from pytz     import timezone
 
 @atexit.register
 def byebye() :
-	logger.info( "===============================  End  ===============================\n\n\n" )
+	logger.info( "===============================  End  ===============================\n\n" )
 
 def sigHandler(signum,f) :
 	SIGNALS_TO_NAMES_DICT = dict((getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG') and '_' not in n )
@@ -119,7 +119,22 @@ def init_cfg( file ) :
 		sys.exit(0)
 
 
-def GetRadioSchedule( sRecSttTime , sRecEndTime , nDispTp ) :
+def WaitingForRecord( sRecSttTime , sRecEndTime ):
+	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
+	if  ( int(sRecSttTime) >  int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) and int(sCurrentTime) < int(sRecSttTime) ) ) \
+		or ( int(sRecSttTime) <= int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) or  int(sCurrentTime) < int(sRecSttTime) ) ) :
+		dRtn = { 'nSleepTime' : 0 , 'sCurrentTime' : sCurrentTime }
+		nSleepTime = 0
+	else :
+		nSleepTime = int(( datetime.datetime.strptime( sRecSttTime , '%H%M%S' )
+						- datetime.datetime.strptime( sCurrentTime , '%H%M%S' )
+						).total_seconds()
+						)
+		nSleepTime = nSleepTime + ( 0 if( nSleepTime >= 0 ) else 86400 )
+	return { 'nSleepTime' : nSleepTime , 'sCurrentTime' : sCurrentTime }
+
+
+def GetRadioScheduleAndReady( sRecSttTime , sRecEndTime , bReady ) :
 	bora_html = requests.get( CFG_RADIO891_DATA )
 	if bora_html.status_code != 200 :
 		logger.error( "방송 정보를 가져오지 못했습니다." )
@@ -129,8 +144,7 @@ def GetRadioSchedule( sRecSttTime , sRecEndTime , nDispTp ) :
 		logger.error( dRadio891Data['result_msg'] )
 		return False
 
-
-	if nDispTp == 0 :
+	if bReady == False :
 		if 'info_msg' in dRadio891Data :
 			for i in range( len( dRadio891Data['info_msg'] ) )  :
 				logger.info( dRadio891Data['info_msg'][i] )
@@ -146,55 +160,38 @@ def GetRadioSchedule( sRecSttTime , sRecEndTime , nDispTp ) :
 			dRadio891Data['strm_title'  ] = dRadio891Data['schedule_table'][i]['title']
 			dRadio891Data['strm_optn_yn'] = dRadio891Data['schedule_table'][i]['opnYn']
 			sTarget = '*'
-		if nDispTp == 0 :
+		if bReady == False :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
-	if nDispTp == 1 :
-		logger.info( "Radio cache_ddtm     = [%s]   " , dRadio891Data['cache_ddtm'    ]      )
-		logger.info( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )
-		logger.info( "Radio strm_url_360p  = [%s...]" , dRadio891Data['strm_url_360p' ][:40] )
-		logger.info( "Radio strm_url_540p  = [%s...]" , dRadio891Data['strm_url_540p' ][:40] )
-		logger.info( "Radio strm_title     = [%s]   " , dRadio891Data['strm_title'    ]      )
-		logger.info( "Radio strm_optn_yn   = [%s]   " , dRadio891Data['strm_optn_yn'  ]      )
-	logger.info( "---------------------------------------------------------------------")
+	if bReady == False :
+		logger.info ( "---------------------------------------------------------------------")
+		return dRadio891Data
+
+	# 스트리밍 정보 설정
+	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
+	strm_time    = ( datetime.datetime.strptime( sRecEndTime  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( sRecEndTime < sCurrentTime ) else 0 )
+	dRadio891Data['strm_ddtm'] = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
+	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".mp4" if( dRadio891Data['strm_optn_yn'] == 'Y') else ".m4a" )
+	dRadio891Data['strm_url' ]  =    ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
+	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( CFG_TEMP_DIR , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
+
+	logger.info ( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
+	logger.info ( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
+	logger.info ( "Radio strm_url_360p  = [%s...]" , dRadio891Data['strm_url_360p' ][:40] )#cache서버
+	logger.info ( "Radio strm_url_540p  = [%s...]" , dRadio891Data['strm_url_540p' ][:40] )#cache서버
+	logger.info ( "Radio strm_title     = [%s]"    , dRadio891Data['strm_title'    ]      )#cache서버
+	logger.info ( "Radio strm_optn_yn   = [%s]"    , dRadio891Data['strm_optn_yn'  ]      )#cache서버
+
+	logger.debug( "Radio strm_call      = [%s]"    , dRadio891Data['strm_call'     ]      )#추가된json
+	logger.debug( "Radio strm_flnm      = [%s]"    , dRadio891Data['strm_flnm'     ]      )#추가된json
+	logger.debug( "Radio strm_ddtm      = [%s]"    , dRadio891Data['strm_ddtm'     ]      )#임시사용
+	logger.debug( "Radio strm_url       = [%s]"    , dRadio891Data['strm_url'      ]      )#임시사용
+	logger.info ( "Radio strm_time      = [%d] (%02d:%02d:%02d)" % (strm_time, strm_time/3600, strm_time%3600/60 ,strm_time%60) )
+	logger.info ( "---------------------------------------------------------------------")
 
 	return dRadio891Data
 
 
-def WaitingForRecord( sRecSttTime , sRecEndTime ):
-	while True :
-		sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
-		if  ( int(sRecSttTime) >  int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) and int(sCurrentTime) < int(sRecSttTime) ) ) \
-		 or ( int(sRecSttTime) <= int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) or  int(sCurrentTime) < int(sRecSttTime) ) ) :
-			break
-		nSleepTime = int(( datetime.datetime.strptime( sRecSttTime , '%H%M%S' )
-						- datetime.datetime.strptime( sCurrentTime , '%H%M%S' )
-						).total_seconds()
-						)
-		nSleepTime = nSleepTime + ( 0 if( nSleepTime >= 0 ) else 86400 )
-		logger.info( "Waiting [%5d] seconds... ( Start[%6s] End[%6s] Now[%6s] )" , nSleepTime , sRecSttTime , sRecEndTime , sCurrentTime )
-		time.sleep( CFG_HB_MIN*60 if( nSleepTime > CFG_HB_MIN*60 ) else nSleepTime )
-
-	return sCurrentTime
-
-
-def RecodingRadio( sRecSttTime , sRecEndTime , sCurrentTime ) :
-	# 스트리밍 정보 설정
-	strm_ddtm = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
-	if dRadio891Data['strm_optn_yn'] == "Y" :
-		strm_flnm = strm_ddtm + " " + dRadio891Data[u'strm_title'] + ".mp4"
-		strm_url  = dRadio891Data['strm_url_540p']
-	else :
-		strm_flnm = strm_ddtm + " " + dRadio891Data[u'strm_title'] + ".m4a"
-		strm_url  = dRadio891Data['strm_url_audio']
-	strm_time = ( datetime.datetime.strptime( sRecEndTime  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( sRecEndTime < sCurrentTime ) else 0 )
-	strm_call = ( 'ffmpeg -i \"%s\" -y -t %d -c copy \"%s\"' ) % ( strm_url , strm_time , os.path.join( CFG_TEMP_DIR , strm_flnm ) ) #  -loglevel warning
-	logger.debug( "Radio strm_call      = [%s]" % strm_call )
-	logger.debug( "Radio strm_url       = [%s]" % strm_url  )
-	logger.debug( "Radio strm_ddtm      = [%s]" % strm_ddtm )
-	logger.info ( "Radio strm_flnm      = [%s]" % strm_flnm )
-	logger.info ( "Radio strm_time      = [%d] (%02d:%02d:%02d)" % (strm_time, strm_time/3600, strm_time%3600/60 ,strm_time%60))
-
-
+def StartRecording( strm_call , strm_flnm ) :
 	# 스트리밍 저장
 	logger.info( "Start Recoding... " )
 	if os.system( strm_call ) != 0 :
@@ -220,28 +217,32 @@ if __name__ == "__main__":
 	# 로그 초기화
 	logger = init_log(True,True) # 파일,화면
 	logger.info( '=============================== Start ===============================' )
-	logger.info( 'KBS Cool FM 89.1MHz Radio Streaming Recoder.         (v0.96_20181116)' )
+	logger.info( 'KBS Cool FM 89.1MHz Radio Streaming Recoder.         (v0.98_20181119)' )
 
 	# 환경설정
 	init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
 	# 방송정보 확인
-	dRadio891Data = GetRadioSchedule( CFG_REC_STT_TIME , CFG_REC_END_TIME , 0 )
+	dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , 0 )
 	if dRadio891Data == False :
 		sys.exit(0)
 
 	# 계속 녹화
 	while True :
 		# 녹화까지 대기
-		sCurrentTime  = WaitingForRecord( CFG_REC_STT_TIME , CFG_REC_END_TIME )
+		dWRtn = WaitingForRecord( CFG_REC_STT_TIME , CFG_REC_END_TIME )
+		if dWRtn['nSleepTime'] > 0 :
+			logger.info( "Waiting [%5d] seconds... ( Start[%6s] End[%6s] Now[%6s] )" , dWRtn['nSleepTime'] , CFG_REC_STT_TIME , CFG_REC_END_TIME , dWRtn['sCurrentTime'] )
+			time.sleep( CFG_HB_MIN*60 if( dWRtn['nSleepTime'] > CFG_HB_MIN*60 ) else dWRtn['nSleepTime'] )
+			continue
 
-		# 녹화전 정보 확인
-		dRadio891Data = GetRadioSchedule( CFG_REC_STT_TIME , CFG_REC_END_TIME , 1 )
+		# 녹화정보 최종 설정
+		dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , 1 )
 		if dRadio891Data == False :
 			break
 
 		# 녹화
-		if RecodingRadio( CFG_REC_STT_TIME , CFG_REC_END_TIME , sCurrentTime ) < 0 :
+		if StartRecording( dRadio891Data['strm_call'] , dRadio891Data['strm_flnm'] ) < 0 :
 			continue
 
 		if CFG_DAEMON_YN in ( 'N',  'n' ) :

@@ -1,0 +1,9 @@
+{
+	"CFG_PROGRAM_STIME" : "200000",
+	"CFG_REC_STT_TIME"  : "195500",
+	"CFG_REC_END_TIME"  : "215800",
+	"CFG_TEMP_DIR"      : "/mnt/SD16G/entware/home",
+	"CFG_TARGET_DIR"    : "/mnt/WD8TB/_AKMU/6-2.RadioDJ_VolumeUp",
+	"CFG_DAEMON_YN"     : "N",
+	"CFG_HB_MIN"        : 1
+}
