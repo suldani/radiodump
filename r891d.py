@@ -31,8 +31,6 @@ daemon설치방법
 pip install requests pytz
 pip install pyinstaller / pyinstaller --i=coolfm.ico -F r891d.py
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-# pip install module
-import requests
 import json
 import datetime
 import time
@@ -43,7 +41,13 @@ import atexit
 import signal
 import logging
 import logging.handlers
+
+# pip install requests pytz
+import requests
 from pytz     import timezone
+
+DEF_C891D_URL = 'https://kbs-radio-891mhz-crawler.appspot.com'
+DEF_VERSION   = 'v0.99(20181122)'
 
 @atexit.register
 def byebye() :
@@ -80,43 +84,33 @@ def init_log(bFile,bScrn) :
 
 
 def init_cfg( file ) :
-	global CFG_PROGRAM_STIME
-	global CFG_REC_STT_TIME
-	global CFG_REC_END_TIME
-	global CFG_TEMP_DIR
-	global CFG_TARGET_DIR
-	global CFG_DAEMON_YN
-	global CFG_HB_MIN
-	global CFG_RADIO891_DATA
+	# 디폴트값
+	dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
+	           , 'CFG_REC_STT_TIME'  : '195520'
+	           , 'CFG_REC_END_TIME'  : '215800'
+	           , 'CFG_TEMP_DIR'      : './'
+	           , 'CFG_TARGET_DIR'    : './'
+	           , 'CFG_DAEMON_YN'     : 'N'
+	           , 'CFG_HB_MIN'        : 1
+	}
 
 	try :
-		with open( file ) as f:
-			dCfgJson = json.load(f)
-		CFG_PROGRAM_STIME = dCfgJson['CFG_PROGRAM_STIME']
-		CFG_REC_STT_TIME  = dCfgJson['CFG_REC_STT_TIME' ]
-		CFG_REC_END_TIME  = dCfgJson['CFG_REC_END_TIME' ]
-		CFG_TEMP_DIR      = dCfgJson['CFG_TEMP_DIR'     ]
-		CFG_TARGET_DIR    = dCfgJson['CFG_TARGET_DIR'   ]
-		CFG_DAEMON_YN     = dCfgJson['CFG_DAEMON_YN'    ]
-		CFG_HB_MIN        = dCfgJson['CFG_HB_MIN'       ]
-		CFG_RADIO891_DATA = 'https://kbs-radio-891mhz-crawler.appspot.com'
-		if len(sys.argv) > 2 :
-			CFG_REC_STT_TIME = sys.argv[1]
-			CFG_REC_END_TIME = sys.argv[2]
-
+		with open( file ) as rfile:
+			dCfgJson = json.load(rfile)
+			logger.info( "Load config file.(%s)" , file )
 	except :
-		dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
-		           , 'CFG_REC_STT_TIME'  : '195520'
-		           , 'CFG_REC_END_TIME'  : '215800'
-		           , 'CFG_TEMP_DIR'      : './'
-		           , 'CFG_TARGET_DIR'    : './'
-		           , 'CFG_DAEMON_YN'     : 'N'
-		           , 'CFG_HB_MIN'        : 1
-				   }
-		with open( file , 'w') as outfile :
-			json.dump(dCfgJson, outfile)
-		logger.info( "환경설정파일을 생성했습니다. 다음 파일을 확인 후 다시 실행하십시요.(%s)" , file )
-		sys.exit(0)
+		with open( file , 'w') as wfile :
+			json.dump(dCfgJson, wfile)
+			logger.info( "Default config file(%s)" , file )
+
+	dCfgJson['DEF_C891D_URL'] = DEF_C891D_URL
+	dCfgJson['DEF_VERSION']   = DEF_VERSION
+
+	if len(sys.argv) > 2 :
+		dCfgJson['CFG_REC_STT_TIME'] = sys.argv[1]
+		dCfgJson['CFG_REC_END_TIME'] = sys.argv[2]
+
+	return dCfgJson
 
 
 def WaitingForRecord( sRecSttTime , sRecEndTime ):
@@ -133,120 +127,117 @@ def WaitingForRecord( sRecSttTime , sRecEndTime ):
 	return { 'nSleepTime' : nSleepTime , 'sCurrentTime' : sCurrentTime }
 
 
-def GetRadioScheduleAndReady( sRecSttTime , sRecEndTime , bReady ) :
-	bora_html = requests.get( CFG_RADIO891_DATA )
+def GetInfoAndStartDump( dCFG , bReady ) :
+	bora_html = requests.get( dCFG['DEF_C891D_URL'] )
 	if bora_html.status_code != 200 :
 		logger.error( "방송 정보를 가져오지 못했습니다." )
-		return False
+		return( -1 )
 	dRadio891Data = json.loads(bora_html.text)
 	if int( dRadio891Data['result_no'] ) < 0 :
 		logger.error( dRadio891Data['result_msg'] )
-		return False
+		return( -2 )
 
 	if bReady == False :
 		if 'info_msg' in dRadio891Data :
+			# 버전체크
+			bDiffVersion = True # 사용하려면 False , 사용 안하려면 True
 			for i in range( len( dRadio891Data['info_msg'] ) )  :
-				logger.info( dRadio891Data['info_msg'][i] )
-		logger.info( "-----Start---End----Bora--Title--------------------------------------")
+				if dRadio891Data['info_msg'][i] == DEF_VERSION :
+					bDiffVersion = True
+				else :
+					logger.info( dRadio891Data['info_msg'][i] )
+			if bDiffVersion == False :
+				return( -3 )
+		logger.info( '-----Start---End----Bora--Title-------------------------%s' , dRadio891Data['cache_ddtm'] )
 	for i in range( len( dRadio891Data['schedule_table'] ) ):
 		sTarget = ''
 		if len(sys.argv) > 2 :
 			dRadio891Data['strm_title'  ] = 'KBS 89.1Mhz CoolFM Radio'
 			dRadio891Data['strm_optn_yn'] = 'Y'
-			if dRadio891Data['schedule_table'][i]['sTime'] < sRecEndTime and dRadio891Data['schedule_table'][i]['eTime'] > sRecSttTime  :
+			if dRadio891Data['schedule_table'][i]['sTime'] < dCFG['CFG_REC_END_TIME'] and dRadio891Data['schedule_table'][i]['eTime'] > dCFG['CFG_REC_END_TIME']  :
 				sTarget = '*'
-		elif dRadio891Data['schedule_table'][i]['sTime'] == CFG_PROGRAM_STIME :
+		elif dRadio891Data['schedule_table'][i]['sTime'] == dCFG['CFG_PROGRAM_STIME'] :
 			dRadio891Data['strm_title'  ] = dRadio891Data['schedule_table'][i]['title']
 			dRadio891Data['strm_optn_yn'] = dRadio891Data['schedule_table'][i]['opnYn']
 			sTarget = '*'
 		if bReady == False :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
 	if bReady == False :
-		logger.info ( "---------------------------------------------------------------------")
-		return dRadio891Data
+		logger.info ( "---------------------------------------------------------------------" )
+		return( 0 )
+
 
 	# 스트리밍 정보 설정
 	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
-	strm_time    = ( datetime.datetime.strptime( sRecEndTime  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( sRecEndTime < sCurrentTime ) else 0 )
+	strm_time    = ( datetime.datetime.strptime( dCFG['CFG_REC_END_TIME']  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( dCFG['CFG_REC_END_TIME'] < sCurrentTime ) else 0 )
 	dRadio891Data['strm_time'] = strm_time
 	dRadio891Data['strm_ddtm'] = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
 	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".mp4" if( dRadio891Data['strm_optn_yn'] == 'Y') else ".m4a" )
-	dRadio891Data['strm_url' ]  =    ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
-	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y  -loglevel warning -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( CFG_TEMP_DIR , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
+	dRadio891Data['strm_url' ] = ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
+	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y  -loglevel warning -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
 
-	logger.info ( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
-	logger.info ( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
-	logger.info ( "Radio strm_url_360p  = [%s...]" , dRadio891Data['strm_url_360p' ][:40] )#cache서버
-	logger.info ( "Radio strm_url_540p  = [%s...]" , dRadio891Data['strm_url_540p' ][:40] )#cache서버
+	logger.debug( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
+	logger.debug( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
+	logger.debug( "Radio strm_url_360p  = [%s...]" , dRadio891Data['strm_url_360p' ][:40] )#cache서버
+	logger.debug( "Radio strm_url_540p  = [%s...]" , dRadio891Data['strm_url_540p' ][:40] )#cache서버
+	logger.debug( "Radio strm_call      = [%s]"    , dRadio891Data['strm_call'     ]      )#추가된json
 	logger.info ( "Radio strm_title     = [%s]"    , dRadio891Data['strm_title'    ]      )#cache서버
 	logger.info ( "Radio strm_optn_yn   = [%s]"    , dRadio891Data['strm_optn_yn'  ]      )#cache서버
 
-	logger.debug( "Radio strm_call      = [%s]"    , dRadio891Data['strm_call'     ]      )#추가된json
-	logger.debug( "Radio strm_flnm      = [%s]"    , dRadio891Data['strm_flnm'     ]      )#추가된json
-	logger.debug( "Radio strm_ddtm      = [%s]"    , dRadio891Data['strm_ddtm'     ]      )#임시사용
-	logger.debug( "Radio strm_url       = [%s]"    , dRadio891Data['strm_url'      ]      )#임시사용
+	logger.info ( "Radio strm_flnm      = [%s]"    , dRadio891Data['strm_flnm'     ]      )#추가된json
+#	logger.debug( "Radio strm_ddtm      = [%s]"    , dRadio891Data['strm_ddtm'     ]      )#임시사용
+#	logger.debug( "Radio strm_url       = [%s]"    , dRadio891Data['strm_url'      ]      )#임시사용
 	logger.info ( "Radio strm_time      = [%d] (%02d:%02d:%02d)" % (strm_time, strm_time/3600, strm_time%3600/60 ,strm_time%60) )
 	logger.info ( "---------------------------------------------------------------------")
 
-	return dRadio891Data
 
-
-def StartRecording( strm_call , strm_flnm ) :
 	# 스트리밍 저장
-	logger.info( "Start Recoding... " )
-	if os.system( strm_call ) != 0 :
-		logger.error( "Radio strm_call       = [%s]" % strm_call )
-		return -1
+	logger.info( "Start Recoding. If you want to stop, press [q]..." )
+	if os.system( dRadio891Data['strm_call'] ) != 0 :
+		logger.error( "Radio strm_call       = [%s]" % dRadio891Data['strm_call'] )
+		return( -1000 )
 	logger.info( "Success Recoded. And... " )
 
 
 	# 스트리밍 파일 처리
 	try :
-		rtn_path = shutil.move( os.path.join( CFG_TEMP_DIR , strm_flnm ) , CFG_TARGET_DIR )
+		rtn_path = shutil.move( os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) , dCFG['CFG_TARGET_DIR'] )
 	except :
-		rtn_path = os.path.join( CFG_TEMP_DIR , strm_flnm )
+		rtn_path = os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] )
 	logger.info( "File [%s]" , rtn_path )
 
 	return 0
 
 
 if __name__ == "__main__":
-	# 시그널
+	# 초기화 및 환경설정
 	init_signal()
-
-	# 로그 초기화
 	logger = init_log(True,True) # 파일,화면
-	logger.info( '=============================== Start ===============================' )
-	logger.info( 'KBS Cool FM 89.1MHz Radio Streaming Recoder.         (v0.98_20181119)' )
+	dCFG   = init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
-	# 환경설정
-	init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
+	# 계속 녹화
+	logger.info( '=============================== Start ===============================' )
+	logger.info( 'KBS Radio Cool FM 89.1MHz Streaming Dumper.           %s',dCFG['DEF_VERSION'])
 
 	# 방송정보 확인
-	dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , False )
-	if dRadio891Data == False :
-		sys.exit(0)
+	if GetInfoAndStartDump( dCFG , False ) < 0 :
+		sys.exit(-1)
 
 	# 계속 녹화
 	while True :
 		# 녹화까지 대기
-		dWRtn = WaitingForRecord( CFG_REC_STT_TIME , CFG_REC_END_TIME )
+		dWRtn = WaitingForRecord( dCFG['CFG_REC_STT_TIME'] , dCFG['CFG_REC_END_TIME'] )
 		if dWRtn['nSleepTime'] > 0 :
-			logger.info( "Waiting [%5d] seconds... ( Start[%6s] End[%6s] Now[%6s] )" , dWRtn['nSleepTime'] , CFG_REC_STT_TIME , CFG_REC_END_TIME , dWRtn['sCurrentTime'] )
-			time.sleep( CFG_HB_MIN*60 if( dWRtn['nSleepTime'] > CFG_HB_MIN*60 ) else dWRtn['nSleepTime'] )
+			logger.info( "Waiting [%5d] seconds... ( Start[%6s] End[%6s] Now[%6s] )" , dWRtn['nSleepTime'] , dCFG['CFG_REC_STT_TIME'] , dCFG['CFG_REC_END_TIME'] , dWRtn['sCurrentTime'] )
+			time.sleep( dCFG['CFG_HB_MIN']*60 if( dWRtn['nSleepTime'] > dCFG['CFG_HB_MIN']*60 ) else dWRtn['nSleepTime'] )
 			continue
 
-		# 녹화정보 최종 설정
-		dRadio891Data = GetRadioScheduleAndReady( CFG_REC_STT_TIME , CFG_REC_END_TIME , True )
-		if dRadio891Data == False :
-			break
-
-		# 녹화
-		if StartRecording( dRadio891Data['strm_call'] , dRadio891Data['strm_flnm'] ) < 0 :
+		# 방송정보 확인 및 녹화 진행
+		if GetInfoAndStartDump( dCFG , True ) < 0 :
 			continue
 
-		if CFG_DAEMON_YN in ( 'N',  'n' ) :
+		if dCFG['CFG_DAEMON_YN'] in ( 'N',  'n' ) :
 			break
 
 		logger.info( 'Waits for the next recording...' )
-		time.sleep( CFG_HB_MIN*60 )
+		time.sleep( dCFG['CFG_HB_MIN']*60 )
