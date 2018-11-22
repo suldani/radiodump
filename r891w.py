@@ -1,29 +1,29 @@
 #!/opt/bin/python
 # -*- coding: utf-8 -*-
 #####################################################################
-# pip install requests
-# pip install pytz
 # pip install pyinstaller
 # pyinstaller --i=coolfm.ico -F r891d.py
 #####################################################################
+import os
 import sys
-import requests
-import json
 import datetime
 import time
-import os
+import json
 import shutil
 import logging
 import logging.handlers
-import r891d  #  import init_log, init_cfg, get_pgm_info, rec_kbs_radio
-import PyQt5
+#from datetime        import time
 
-from pytz            import timezone
-from datetime        import time
+# pip install requests pytz PyQt5
+import requests
+import PyQt5
 from PyQt5           import uic, QtCore
 from PyQt5.QtWidgets import *
 
+# My Module
+import r891d
 #import Ui_r891w
+
 #if hasattr(Qt, 'AA_EnableHighDpiScaling'):
 PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
  
@@ -42,12 +42,19 @@ class XDialog(QDialog, form_class):
 	def __init__(self):
 		QDialog.__init__(self)
 		self.timer    = QtCore.QTimer(self)
-		self.timer.timeout.connect(self.changeProgressStatus)
+
 		# setupUi() 메서드는 화면에 다이얼로그 보여줌
 		self.setupUi(self)
 
 		for i in range( len( dRadio891Data['schedule_table'] ) ) :
 			self.comboBox_Schedule.addItem( dRadio891Data['schedule_table'][i]['sTime'][:2] + '~' + dRadio891Data['schedule_table'][i]['eTime'][:2] + "시 "+ ( '*' if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else '' ) + dRadio891Data['schedule_table'][i]['title'] )
+			if r891d.CFG_PROGRAM_STIME == dRadio891Data['schedule_table'][i]['sTime'] :
+				self.comboBox_Schedule.setCurrentIndex(i)
+
+		self.comboBox_Schedule.currentIndexChanged['int'].connect(self.setRecInfo)
+		self.pushButton_Start.clicked.connect(self.tryRecording)
+		self.pushButton_Stop.clicked.connect(self.stopRecording)
+		self.timer.timeout.connect(self.changeProgressStatus)
 
 		# custom signal from worker thread to main thread
 		self.thdRecording = worker()
@@ -57,15 +64,16 @@ class XDialog(QDialog, form_class):
 		self.sigStartEndTime.connect(self.thdRecording.thdTryRecording)
 
 	def setRecInfo(self,i):
-		r891d.CFG_PROGRAM_STIME = dRadio891Data['schedule_table'][i]['sTime']
 		sFmTime = (datetime.datetime.strptime( dRadio891Data['schedule_table'][i]['sTime'] , '%H%M%S' ) - datetime.timedelta(minutes=4)).strftime('%H%M%S')
 		sToTime = (datetime.datetime.strptime( dRadio891Data['schedule_table'][i]['eTime'] , '%H%M%S' ) - datetime.timedelta(minutes=3)).strftime('%H%M%S')
-		self.checkBox_Open.setChecked( True if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else False )
-		self.timeEdit_StartTm.setTime( time( int(sFmTime[0:2]),int(sFmTime[2:4]),int(sFmTime[4:6]) ))
-		self.timeEdit_EndTm  .setTime( time( int(sToTime[0:2]),int(sToTime[2:4]),int(sToTime[4:6]) ))
-		self.lineEdit_FileName.setText( datetime.datetime.now().strftime('%y%m%d') + '_' + sFmTime + ' ' + dRadio891Data['schedule_table'][i]['title'] + ( '.mp4' if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else '.m4a' ) + '(예정)')
+		self.checkBox_Open .setChecked( True if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else False )
+		self.timeEdit_StartTm .setTime( QtCore.QTime( int(sFmTime[0:2]) , int(sFmTime[2:4]) , int(sFmTime[4:6]) ) )
+		self.timeEdit_EndTm   .setTime( QtCore.QTime( int(sToTime[0:2]) , int(sToTime[2:4]) , int(sToTime[4:6]) ) )
+		self.lineEdit_FileName.setText( datetime.datetime.now().strftime('%y%m%d') + '_HHMMSS ' + dRadio891Data['schedule_table'][i]['title'] + ( '.mp4' if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else '.m4a' ) )
 
 	def tryRecording(self):
+		r891d.CFG_PROGRAM_STIME = self.comboBox_Schedule.currentText()[0:2] + '0000'
+
 		self.pushButton_Start.setEnabled(False)
 		self.pushButton_Stop.setEnabled(True)
 
@@ -81,20 +89,20 @@ class XDialog(QDialog, form_class):
 		self.pushButton_Stop.setEnabled(False)
 
 
-	@QtCore.pyqtSlot(str,int)
-	def progressStatus(self,tp,nMaxValue):
+	@QtCore.pyqtSlot(str,int,str)
+	def progressStatus(self,tp,nMaxValue,strm_flnm ):
 		print("프로그레스바 진행률 표시 등등 스레드의 정보(진행상태:%s,퍼센트:%d)" % (tp, nMaxValue ))
 #		progressTp = tp
 #		nMaxValue  = nMaxValue
 
 		self.progressBar.setMaximum( nMaxValue )
 		self.progressBar.setRange(0, nMaxValue )
-		self.lineEdit_FileName.setText( dRadio891Data['strm_flnm'] )
 		if tp == 'waiting' :
 			self.progressBar.setValue( 0 )
-			self.progressBar.setFormat('%p% / 대기중(%02d:%02d:%02d)' % ( nMaxValue/3600, nMaxValue%3600/60 ,nMaxValue%60 ) )
+			self.progressBar.setFormat( '%p%' + ' (대기중(%02d:%02d:%02d)' % ( nMaxValue/3600, nMaxValue%3600/60 ,nMaxValue%60 ) )
 		elif tp == 'startRec' :
-			self.progressBar.setFormat('%p% / 녹화중(00:00:00)')
+#			self.lineEdit_FileName.setText( dRadio891Data['strm_flnm'] )
+			self.progressBar.setFormat( '%p% / 녹화중(00:00:00)')
 			self.zerotime = QtCore.QTime(00,00,00)
 			self.timer.start(1000)
 		elif tp == 'EndRec' :
@@ -141,7 +149,7 @@ class worker(QtCore.QThread):
 			else :
 				break
 
-		dRadio891Data = r891d.GetRadioScheduleAndReady( worker.sSttTm , worker.sEndTm , True )
+		dRadio891Data = r891d.GetRadioScheduleAndReady( r891d.CFG_PROGRAM_STIME , worker.sSttTm , worker.sEndTm , True )
 		self.progressInfoChanged.emit('startRec',int(dRadio891Data['strm_time']))
 		if r891d.StartRecording(  dRadio891Data['strm_call'] , dRadio891Data['strm_flnm'] ) < 0 :
 			print('녹화중 에러났음')
@@ -156,6 +164,46 @@ class worker(QtCore.QThread):
 		worker.sEndTm = b
 
 
+def init_cfg( file ) :
+	global CFG_PROGRAM_STIME
+	global CFG_REC_STT_TIME
+	global CFG_REC_END_TIME
+	global CFG_TEMP_DIR
+	global CFG_TARGET_DIR
+	global CFG_DAEMON_YN
+	global CFG_HB_MIN
+	global CFG_RADIO891_DATA
+
+	try :
+		with open( file ) as f:
+			dCfgJson = json.load(f)
+		CFG_PROGRAM_STIME = dCfgJson['CFG_PROGRAM_STIME']
+		CFG_REC_STT_TIME  = dCfgJson['CFG_REC_STT_TIME' ]
+		CFG_REC_END_TIME  = dCfgJson['CFG_REC_END_TIME' ]
+		CFG_TEMP_DIR      = dCfgJson['CFG_TEMP_DIR'     ]
+		CFG_TARGET_DIR    = dCfgJson['CFG_TARGET_DIR'   ]
+		CFG_DAEMON_YN     = dCfgJson['CFG_DAEMON_YN'    ]
+		CFG_HB_MIN        = dCfgJson['CFG_HB_MIN'       ]
+		CFG_RADIO891_DATA = 'https://kbs-radio-891mhz-crawler.appspot.com'
+		if len(sys.argv) > 2 :
+			CFG_REC_STT_TIME = sys.argv[1]
+			CFG_REC_END_TIME = sys.argv[2]
+
+	except :
+		dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
+		           , 'CFG_REC_STT_TIME'  : '195520'
+		           , 'CFG_REC_END_TIME'  : '215800'
+		           , 'CFG_TEMP_DIR'      : './'
+		           , 'CFG_TARGET_DIR'    : './'
+		           , 'CFG_DAEMON_YN'     : 'N'
+		           , 'CFG_HB_MIN'        : 1
+				   }
+		with open( file , 'w') as outfile :
+			json.dump(dCfgJson, outfile)
+		logger.info( "환경설정파일을 생성했습니다. 다음 파일을 확인 후 다시 실행하십시요.(%s)" , file )
+		sys.exit(0)
+
+
 if __name__ == "__main__":
 	# 환경설정
 	r891d.logger = r891d.init_log(True,True) # 파일,화면
@@ -164,7 +212,7 @@ if __name__ == "__main__":
 	# 환경설정
 	r891d.init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
-	dRadio891Data = r891d.GetRadioScheduleAndReady( r891d.CFG_REC_STT_TIME , r891d.CFG_REC_END_TIME , False )
+	dRadio891Data = r891d.GetRadioScheduleAndReady( r891d.CFG_PROGRAM_STIME , r891d.CFG_REC_STT_TIME , r891d.CFG_REC_END_TIME , False )
 	if dRadio891Data == False :
 		exit(0)
 	app = QApplication(sys.argv)

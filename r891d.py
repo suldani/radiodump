@@ -7,9 +7,9 @@ KBS 라디오 89.1MHz 정보를 가져와 DirectScream으로 저장한다.
 저장중 네트웍이상, 정전 등의 오류 발생시에는 바로 재실행한다.
 
 참고
-1. kbs측 스트리밍 데이터의 캐시(추정)로 일찍 녹화가 시작된다.
-시간을 정확하게 맞추고 싶다면 녹화시간을 15~20초정도 앞당길것
-2. 현재 보라는 540p 30f(2시간 녹화시 약 1GB)로 저장되나,
+1. kbs측 스트리밍 데이터의 캐시(추정)로 일찍 덤프가 시작된다.
+시간을 정확하게 맞추고 싶다면 덤프시간을 15~20초정도 앞당길것
+2. 현재 보라는 540p 30f(2시간 덤프시 약 1GB)로 저장되나,
    종종 알 수 없는 이유 20f로 저장되는 경우가 있다.
 3. 프로그램정보를 캐시서버에서 가져오기 때문에 KBS측의 부하는 없다.
 4. 자정이 걸리는 시간은 오류 있음.
@@ -47,7 +47,7 @@ import requests
 from pytz     import timezone
 
 DEF_C891D_URL = 'https://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v0.99(20181122)'
+DEF_VERSION   = 'v0.99.181122'
 
 @atexit.register
 def byebye() :
@@ -56,7 +56,7 @@ def byebye() :
 def sigHandler(signum,f) :
 	SIGNALS_TO_NAMES_DICT = dict((getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG') and '_' not in n )
 	logger.info( "(%02d:%s) Bye-bye." , signum , SIGNALS_TO_NAMES_DICT[signum] )
-	sys.exit()
+	sys.exit( 0 )
 
 def init_signal() :
 	for x in dir(signal):
@@ -92,7 +92,7 @@ def init_cfg( file ) :
 	           , 'CFG_TARGET_DIR'    : './'
 	           , 'CFG_DAEMON_YN'     : 'N'
 	           , 'CFG_HB_MIN'        : 1
-	}
+	           }
 
 	try :
 		with open( file ) as rfile:
@@ -101,10 +101,10 @@ def init_cfg( file ) :
 	except :
 		with open( file , 'w') as wfile :
 			json.dump(dCfgJson, wfile)
-			logger.info( "Default config file(%s)" , file )
+			logger.info( "Default config file.(%s)" , file )
 
 	dCfgJson['DEF_C891D_URL'] = DEF_C891D_URL
-	dCfgJson['DEF_VERSION']   = DEF_VERSION
+	dCfgJson['DEF_VERSION'  ] = DEF_VERSION
 
 	if len(sys.argv) > 2 :
 		dCfgJson['CFG_REC_STT_TIME'] = sys.argv[1]
@@ -113,7 +113,7 @@ def init_cfg( file ) :
 	return dCfgJson
 
 
-def WaitingForRecord( sRecSttTime , sRecEndTime ):
+def WaitingForDump( sRecSttTime , sRecEndTime ):
 	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
 	if  ( int(sRecSttTime) >  int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) and int(sCurrentTime) < int(sRecSttTime) ) ) \
 		or ( int(sRecSttTime) <= int(sRecEndTime) and not ( int(sCurrentTime) >= int(sRecEndTime) or  int(sCurrentTime) < int(sRecSttTime) ) ) :
@@ -128,7 +128,7 @@ def WaitingForRecord( sRecSttTime , sRecEndTime ):
 
 
 def GetInfoAndStartDump( dCFG , bReady ) :
-	bora_html = requests.get( dCFG['DEF_C891D_URL'] )
+	bora_html = requests.get( dCFG['DEF_C891D_URL'] , headers = {'User-Agent': 'r891d/'+dCFG['DEF_VERSION']})
 	if bora_html.status_code != 200 :
 		logger.error( "방송 정보를 가져오지 못했습니다." )
 		return( -1 )
@@ -138,17 +138,10 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		return( -2 )
 
 	if bReady == False :
-		if 'info_msg' in dRadio891Data :
-			# 버전체크
-			bDiffVersion = True # 사용하려면 False , 사용 안하려면 True
-			for i in range( len( dRadio891Data['info_msg'] ) )  :
-				if dRadio891Data['info_msg'][i] == DEF_VERSION :
-					bDiffVersion = True
-				else :
-					logger.info( dRadio891Data['info_msg'][i] )
-			if bDiffVersion == False :
-				return( -3 )
-		logger.info( '-----Start---End----Bora--Title-------------------------%s' , dRadio891Data['cache_ddtm'] )
+		logger.info( '-----Notice %s--------------------------------------------' , dRadio891Data['cache_ddtm'] )
+		for i in range( len( dRadio891Data['info_msg'] ) )  :
+			logger.info( dRadio891Data['info_msg'][i] )
+		logger.info( '-----Start---End----Bora--Title--------------------------------------' )
 	for i in range( len( dRadio891Data['schedule_table'] ) ):
 		sTarget = ''
 		if len(sys.argv) > 2 :
@@ -192,11 +185,11 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 
 
 	# 스트리밍 저장
-	logger.info( "Start Recoding. If you want to stop, press [q]..." )
+	logger.info( "Start Dumping. If you want to stop, press [q]..." )
 	if os.system( dRadio891Data['strm_call'] ) != 0 :
 		logger.error( "Radio strm_call       = [%s]" % dRadio891Data['strm_call'] )
 		return( -1000 )
-	logger.info( "Success Recoded. And... " )
+	logger.info( "Success Dumped. And... " )
 
 
 	# 스트리밍 파일 처리
@@ -215,29 +208,28 @@ if __name__ == "__main__":
 	logger = init_log(True,True) # 파일,화면
 	dCFG   = init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
-	# 계속 녹화
 	logger.info( '=============================== Start ===============================' )
-	logger.info( 'KBS Radio Cool FM 89.1MHz Streaming Dumper.           %s',dCFG['DEF_VERSION'])
+	logger.info( 'KBS Radio Cool FM 89.1MHz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
 
 	# 방송정보 확인
 	if GetInfoAndStartDump( dCFG , False ) < 0 :
 		sys.exit(-1)
 
-	# 계속 녹화
+	# 계속 덤프
 	while True :
-		# 녹화까지 대기
-		dWRtn = WaitingForRecord( dCFG['CFG_REC_STT_TIME'] , dCFG['CFG_REC_END_TIME'] )
+		# 덤프까지 대기
+		dWRtn = WaitingForDump( dCFG['CFG_REC_STT_TIME'] , dCFG['CFG_REC_END_TIME'] )
 		if dWRtn['nSleepTime'] > 0 :
 			logger.info( "Waiting [%5d] seconds... ( Start[%6s] End[%6s] Now[%6s] )" , dWRtn['nSleepTime'] , dCFG['CFG_REC_STT_TIME'] , dCFG['CFG_REC_END_TIME'] , dWRtn['sCurrentTime'] )
 			time.sleep( dCFG['CFG_HB_MIN']*60 if( dWRtn['nSleepTime'] > dCFG['CFG_HB_MIN']*60 ) else dWRtn['nSleepTime'] )
 			continue
 
-		# 방송정보 확인 및 녹화 진행
+		# 방송정보 확인 및 덤프 진행
 		if GetInfoAndStartDump( dCFG , True ) < 0 :
 			continue
 
 		if dCFG['CFG_DAEMON_YN'] in ( 'N',  'n' ) :
 			break
 
-		logger.info( 'Waits for the next recording...' )
+		logger.info( 'Waits for the next dumping...' )
 		time.sleep( dCFG['CFG_HB_MIN']*60 )
