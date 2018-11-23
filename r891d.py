@@ -29,7 +29,7 @@ daemon설치방법
 3. reboot 후 ps | grep r891d 실행중인지 확인한다.
 ---------------------------------------------------------------------
 pip install requests pytz
-pip install pyinstaller / pyinstaller --i=coolfm.ico -F r891d.py
+pip install pyinstaller / pyinstaller --i=res\coolfm.ico -F r891d.py
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 import json
 import datetime
@@ -47,11 +47,13 @@ import requests
 from pytz     import timezone
 
 DEF_C891D_URL = 'https://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v0.99.181122'
+DEF_VERSION   = 'v1.00.181123'
 
 @atexit.register
 def byebye() :
 	logger.info( "===============================  End  ===============================\n\n" )
+	if os.name == 'nt' :
+		input()
 
 def sigHandler(signum,f) :
 	SIGNALS_TO_NAMES_DICT = dict((getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG') and '_' not in n )
@@ -128,6 +130,18 @@ def WaitingForDump( sRecSttTime , sRecEndTime ):
 
 
 def GetInfoAndStartDump( dCFG , bReady ) :
+	if bReady == False :
+		# 파일 여부 확인
+		sExecFlnm = 'ffmpeg' + ( '.exe' if ( os.name == 'nt' ) else ''  )
+		sSplitCha =            ( ';'    if ( os.name == 'nt' ) else ':' )
+		bExistFile = False
+
+		for i in os.environ['PATH'].split( sSplitCha ) :
+			bExistFile = ( bExistFile or os.path.isfile( os.path.join( i , sExecFlnm ) ) )
+		if bExistFile == False :
+			logger.error( "(%s)가 없습니다. (%s) 에서 다운받은 후 (%s)를 같은 폴더에 위치하세요." , sExecFlnm , 'https://www.ffmpeg.org' , sExecFlnm )
+			return( -4 )
+
 	bora_html = requests.get( dCFG['DEF_C891D_URL'] , headers = {'User-Agent': 'r891d/'+dCFG['DEF_VERSION']})
 	if bora_html.status_code != 200 :
 		logger.error( "방송 정보를 가져오지 못했습니다." )
