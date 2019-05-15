@@ -165,9 +165,9 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	strm_time    = ( datetime.datetime.strptime( dCFG['CFG_REC_END_TIME']  , '%H%M%S' ) - datetime.datetime.strptime( sCurrentTime , '%H%M%S' ) ).total_seconds() + ( 86400 if( dCFG['CFG_REC_END_TIME'] < sCurrentTime ) else 0 )
 	dRadio891Data['strm_time'] = strm_time
 	dRadio891Data['strm_ddtm'] = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
-	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".mp4" if( dRadio891Data['strm_optn_yn'] == 'Y') else ".m4a" )
+	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".H264" if( dRadio891Data['strm_optn_yn'] == 'Y') else "" ) + ".AAC.ts"
 	dRadio891Data['strm_url' ] = ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
-	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y  -loglevel warning -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
+	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
 
 	logger.debug( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
 	logger.debug( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
@@ -194,7 +194,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 
 	# 스트리밍 파일 처리
 	try :
-		rtn_path = shutil.move( os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) , dCFG['CFG_TARGET_DIR'] )
+		rtn_path = shutil.copy( os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) , dCFG['CFG_TARGET_DIR'] )
 	except :
 		rtn_path = os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] )
 	logger.info( "File [%s]" , rtn_path )
