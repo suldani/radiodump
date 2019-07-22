@@ -20,7 +20,7 @@ daemon설치방법
 
 #######################################################################
 cfg_bora_url      = 'http://onair.kbs.co.kr/?sname=onair&stype=live&ch_code=25&ch_type=radioList'
-cfg_waiting_time  = 30
+cfg_waiting_min   = 60
 #######################################################################
 
 # pip install module
@@ -36,6 +36,10 @@ import logging
 import logging.handlers
 from bs4      import BeautifulSoup
 from pytz     import timezone
+
+
+global rec891json
+rec891json = {'cache_ddtm':'000000_000000'}
 
 
 def init_log(bFile,bScrn) :
@@ -72,16 +76,23 @@ def get_pgm_info() :
 		schl_rinf = re.findall(r'var next = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
 		schl_jinf = json.loads(schl_rinf.replace('\\"','\"').replace('\\\\u','\\u').replace('\/','/'))
 		rec891PList = []
-		#logger.info( "[No] PgmId------Bora--Stt-----End-----PgmNm--------------------------")
+		logger.debug( "[No] PgmId------Bora--Stt-----End-----PgmNm--------------------------")
 		for i in range( len( schl_jinf['data'] ) ):
-			#if schl_jinf['data'][i]['program_stime'] < rec_end_time and schl_jinf['data'][i]['program_etime'] > rec_stt_time  :
-			logger.debug( "[%02d] %s   %s   %s  %s  %s" % (i ,schl_jinf['data'][i]['program_code'], schl_jinf['data'][i]['radio_open_studio_yn'], schl_jinf['data'][i]['program_stime'], schl_jinf['data'][i]['program_etime'] , schl_jinf['data'][i]['program_title']))
-			rec891PList += [{'pcode' : schl_jinf['data'][i]['program_code']
-			                ,'opnyn' : schl_jinf['data'][i]['radio_open_studio_yn']
-			                ,'stime' : schl_jinf['data'][i]['program_stime']
-			                ,'etime' : schl_jinf['data'][i]['program_etime']
-			                ,'title' : schl_jinf['data'][i]['program_title']
-			                }]
+			schl_jinf['data'][i]['program_stime'] = ( "%06d" % (int( schl_jinf['data'][i]['program_stime'] ) % 240000) )
+			schl_jinf['data'][i]['program_etime'] = ( "%06d" % (int( schl_jinf['data'][i]['program_etime'] ) % 240000) )
+			nIdx = len( rec891PList )
+			if nIdx > 0 and rec891PList[nIdx-1]['title'] == schl_jinf['data'][i]['program_title'] :
+				rec891PList[nIdx-1]['eTime'] = schl_jinf['data'][i]['program_etime']
+			else :
+				rec891PList += [{'sTime' : schl_jinf['data'][i]['program_stime']
+				                ,'eTime' : schl_jinf['data'][i]['program_etime']
+				                ,'opnYn' : schl_jinf['data'][i]['radio_open_studio_yn']
+				                ,'title' : schl_jinf['data'][i]['program_title']
+				                ,'pcode' : schl_jinf['data'][i]['program_code']
+				                }]
+		#리스트확인코드
+		for i in range( len( rec891PList ) ):
+			logger.info( "[%02d] %s   %s   %s  %s" % (i ,rec891PList[i]['sTime'], rec891PList[i]['eTime'], rec891PList[i]['opnYn'] , rec891PList[i]['title']))
 	except :
 		logger.error( "방송 정보 파싱중 실패했습니다." )
 		return(-2)
