@@ -24,6 +24,9 @@ from PyQt5.QtWidgets import *
 import r891d
 #import Ui_r891w
 
+global dRadio891Data
+global dCFG
+
 #if hasattr(Qt, 'AA_EnableHighDpiScaling'):
 PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
  
@@ -48,7 +51,7 @@ class XDialog(QDialog, form_class):
 
 		for i in range( len( dRadio891Data['schedule_table'] ) ) :
 			self.comboBox_Schedule.addItem( dRadio891Data['schedule_table'][i]['sTime'][:2] + '~' + dRadio891Data['schedule_table'][i]['eTime'][:2] + "시 "+ ( '*' if( dRadio891Data['schedule_table'][i]['opnYn'] == 'Y' ) else '' ) + dRadio891Data['schedule_table'][i]['title'] )
-			if r891d.CFG_PROGRAM_STIME == dRadio891Data['schedule_table'][i]['sTime'] :
+			if dCFG['CFG_PROGRAM_STIME'] == dRadio891Data['schedule_table'][i]['sTime'] :
 				self.comboBox_Schedule.setCurrentIndex(i)
 
 		self.comboBox_Schedule.currentIndexChanged['int'].connect(self.setRecInfo)
@@ -164,57 +167,16 @@ class worker(QtCore.QThread):
 		worker.sEndTm = b
 
 
-def init_cfg( file ) :
-	global CFG_PROGRAM_STIME
-	global CFG_REC_STT_TIME
-	global CFG_REC_END_TIME
-	global CFG_TEMP_DIR
-	global CFG_TARGET_DIR
-	global CFG_DAEMON_YN
-	global CFG_HB_MIN
-	global CFG_RADIO891_DATA
-
-	try :
-		with open( file ) as f:
-			dCfgJson = json.load(f)
-		CFG_PROGRAM_STIME = dCfgJson['CFG_PROGRAM_STIME']
-		CFG_REC_STT_TIME  = dCfgJson['CFG_REC_STT_TIME' ]
-		CFG_REC_END_TIME  = dCfgJson['CFG_REC_END_TIME' ]
-		CFG_TEMP_DIR      = dCfgJson['CFG_TEMP_DIR'     ]
-		CFG_TARGET_DIR    = dCfgJson['CFG_TARGET_DIR'   ]
-		CFG_DAEMON_YN     = dCfgJson['CFG_DAEMON_YN'    ]
-		CFG_HB_MIN        = dCfgJson['CFG_HB_MIN'       ]
-		CFG_RADIO891_DATA = 'https://kbs-radio-891mhz-crawler.appspot.com'
-		if len(sys.argv) > 2 :
-			CFG_REC_STT_TIME = sys.argv[1]
-			CFG_REC_END_TIME = sys.argv[2]
-
-	except :
-		dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
-		           , 'CFG_REC_STT_TIME'  : '195520'
-		           , 'CFG_REC_END_TIME'  : '215800'
-		           , 'CFG_TEMP_DIR'      : './'
-		           , 'CFG_TARGET_DIR'    : './'
-		           , 'CFG_DAEMON_YN'     : 'N'
-		           , 'CFG_HB_MIN'        : 1
-				   }
-		with open( file , 'w') as outfile :
-			json.dump(dCfgJson, outfile)
-		logger.info( "환경설정파일을 생성했습니다. 다음 파일을 확인 후 다시 실행하십시요.(%s)" , file )
-		sys.exit(0)
-
-
 if __name__ == "__main__":
+	global dRadio891Data
+	global dCFG
 	# 환경설정
 	r891d.logger = r891d.init_log(True,True) # 파일,화면
 	r891d.logger.info( "=============================== Start ===============================" )
 
 	# 환경설정
-	r891d.init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
-
-	dRadio891Data = r891d.GetRadioScheduleAndReady( r891d.CFG_PROGRAM_STIME , r891d.CFG_REC_STT_TIME , r891d.CFG_REC_END_TIME , False )
-	if dRadio891Data == False :
-		exit(0)
+	dCFG = r891d.init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
+	dRadio891Data = r891d.GetInfoAndStartDump( dCFG , False )
 	app = QApplication(sys.argv)
 	dialog = XDialog()
 	dialog.show()
