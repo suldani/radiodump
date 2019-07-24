@@ -74,10 +74,10 @@ def get_pgm_info() :
 
 	try :
 		schl_rinf = re.findall(r'var next = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
-		schl_jinf = json.loads(schl_rinf.replace('\\"','\"').replace('\\\\u','\\u').replace('\/','/'))
+		schl_jinf = json.loads(schl_rinf.replace('\\"','\"').replace('\\\\u','\\u').replace(r'\/','/'))
 		rec891PList = []
 		logger.debug( "[No] PgmId------Bora--Stt-----End-----PgmNm--------------------------")
-		for i in range( len( schl_jinf['data'] ) ):
+		for i in range( len( schl_jinf['data'] ) ) :
 			schl_jinf['data'][i]['program_stime'] = ( "%06d" % (int( schl_jinf['data'][i]['program_stime'] ) % 240000) )
 			schl_jinf['data'][i]['program_etime'] = ( "%06d" % (int( schl_jinf['data'][i]['program_etime'] ) % 240000) )
 			nIdx = len( rec891PList )
@@ -85,11 +85,11 @@ def get_pgm_info() :
 				rec891PList[nIdx-1]['eTime'] = schl_jinf['data'][i]['program_etime']
 			else :
 				rec891PList += [{'sTime' : schl_jinf['data'][i]['program_stime']
-				                ,'eTime' : schl_jinf['data'][i]['program_etime']
-				                ,'opnYn' : schl_jinf['data'][i]['radio_open_studio_yn']
-				                ,'title' : schl_jinf['data'][i]['program_title']
-				                ,'pcode' : schl_jinf['data'][i]['program_code']
-				                }]
+								,'eTime' : schl_jinf['data'][i]['program_etime']
+								,'opnYn' : schl_jinf['data'][i]['radio_open_studio_yn']
+								,'title' : schl_jinf['data'][i]['program_title']
+								,'pcode' : schl_jinf['data'][i]['program_code']
+								}]
 		#리스트확인코드
 		for i in range( len( rec891PList ) ):
 			logger.info( "[%02d] %s   %s   %s  %s" % (i ,rec891PList[i]['sTime'], rec891PList[i]['eTime'], rec891PList[i]['opnYn'] , rec891PList[i]['title']))
@@ -100,7 +100,7 @@ def get_pgm_info() :
 
 	try :
 		strm_rdat      = re.findall(r'var channel = JSON\.parse\(\'(.*)\'\);', bora_soup.text)[0]
-		strm_jdat      = json.loads(strm_rdat.replace('\\"','\"').replace('\\\\u','\\u').replace('\/','/'))
+		strm_jdat      = json.loads(strm_rdat.replace('\\"','\"').replace('\\\\u','\\u').replace(r'\/','/'))
 
 		cache_ddtm     = strm_jdat['cached_datetime'][2:10].replace('-','') + "_" + strm_jdat[u'cached_datetime'][11:].replace(':','')   # 날짜
 		strm_url_audio = strm_jdat['channel_item'][0]['service_url']
@@ -111,17 +111,45 @@ def get_pgm_info() :
 		logger.error( "스트리밍 정보 파싱에서 실패했습니다." )
 		return(-3)
 
+	try :
+		subtitle_rinf = re.findall(r'var channelinfoListJson.*({\\\\\\"program_ch_code\\\\\\":\\\\\\"25.*?ad_del_yn.*?\})', bora_soup.text)[0]
+		subtitle_jinf = json.loads(subtitle_rinf.replace('\\\\\\"','\"').replace('\\\\\\\\u','\\u').replace('\\\\\\\\/','/'))
+
+		now_program_code         = subtitle_jinf['program_code']
+		now_program_title        = subtitle_jinf['program_title']
+		now_program_subtitle     = subtitle_jinf['program_subtitle']
+		now_program_staff        = subtitle_jinf['program_staff']
+		now_program_homeurl      = subtitle_jinf['program_homeurl']
+		now_program_date         = subtitle_jinf['program_date']
+		now_radio_open_studio_yn = subtitle_jinf['radio_open_studio_yn']
+	except :
+		now_program_code         = ""
+		now_program_title        = ""
+		now_program_subtitle     = ""
+		now_program_staff        = ""
+		now_program_homeurl      = ""
+		now_program_date         = ""
+		now_radio_open_studio_yn = ""
+		logger.error( "실시간 방송 정보 파싱중 실패했습니다." )
+
 	logger.debug( "cache_ddtm     = [%s]" , cache_ddtm     )
 	logger.debug( "strm_url_audio = [%s]" , strm_url_audio )
 	logger.debug( "strm_url_360p  = [%s]" , strm_url_360p  )
 	logger.debug( "strm_url_540p  = [%s]" , strm_url_540p  )
-	logger.debug( "schedule_table = [%s]" , rec891PList )
+#	logger.debug( "schedule_table = [%s]" , rec891PList )
 
-	rec891json = { 'cache_ddtm'     : cache_ddtm
-	             , 'strm_url_audio' : strm_url_audio
-	             , 'strm_url_360p'  : strm_url_360p
-	             , 'strm_url_540p'  : strm_url_540p
-				 , 'schedule_table' : rec891PList
+	rec891json = { 'cache_ddtm'               : cache_ddtm
+	             , 'strm_url_audio'           : strm_url_audio
+	             , 'strm_url_360p'            : strm_url_360p
+	             , 'strm_url_540p'            : strm_url_540p
+	             , 'now_program_code'         : now_program_code
+	             , 'now_program_title'        : now_program_title
+	             , 'now_program_subtitle'     : now_program_subtitle
+	             , 'now_program_staff'        : now_program_staff
+	             , 'now_program_homeurl'      : now_program_homeurl
+	             , 'now_program_date'         : now_program_date
+	             , 'now_radio_open_studio_yn' : now_radio_open_studio_yn
+				 , 'schedule_table'           : rec891PList
 	             }
 
 	with open('radio891.json', 'w') as outfile :

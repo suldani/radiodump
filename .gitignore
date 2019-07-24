@@ -28,6 +28,10 @@ wheels/
 *.egg
 MANIFEST
 .*.json
+*.mp4
+*.m4a
+*.te
+ffmpeg.exe
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
