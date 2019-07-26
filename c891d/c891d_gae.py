@@ -46,7 +46,7 @@ def get_pgm_info() :
 	sDdTm = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%y%m%d_%H%M%S')
 	if rec891json['cache_ddtm'][:9] == sDdTm[:9] :
 		print( '캐시된 정보를 사용합니다. 현재(%s) 기존(%s)' , rec891json['cache_ddtm'] , sDdTm )
-		return app.response_class( response=json.dumps(rec891json),	status=200,	mimetype='application/json'	)
+		return app.response_class( response=json.dumps(rec891json,sort_keys=True ),	status=200,	mimetype='application/json'	)
 
 	print( '정보를 수신 시도합니다. 현재(%s) 기존(%s)' , rec891json['cache_ddtm'] , sDdTm )
 	rec891json.clear()
@@ -143,7 +143,6 @@ def get_pgm_info() :
 				 }
 
 	return app.response_class( response=json.dumps(rec891json,sort_keys=True ),	status=200,	mimetype='application/json'	)
-	#return app.response_class( response=json.dumps(rec891json),	status=200,	mimetype='application/json'	)
 
 
 if __name__ == "__main__":
