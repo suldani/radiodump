@@ -52,8 +52,8 @@ DEF_VERSION   = 'v1.10.190731'
 @atexit.register
 def byebye() :
 	logger.info( "===============================  End  ===============================\n\n" )
-	if os.name == 'nt' :
-		input()
+#	if os.name == 'nt' :
+#		input()
 
 def sigHandler(signum,f) :
 	SIGNALS_TO_NAMES_DICT = dict((getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG') and '_' not in n )
@@ -93,8 +93,8 @@ def init_cfg( file ) :
 	           , 'CFG_TEMP_DIR'      : './'
 	           , 'CFG_TARGET_DIR'    : './'
 	           , 'CFG_DAEMON_YN'     : 'N'
-	           , 'CFG_HB_MIN'        : 1,
-	           , 'CFG_YOUTUBE_UP'    : 'N',
+	           , 'CFG_HB_MIN'        : 1
+	           , 'CFG_YOUTUBE_UP'    : 'N'
 	           , 'CFG_YOUTUBE_INFO'  : { 'title'                   : '악동뮤지션 수현의 볼륨을 높여요'
 	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 #볼륨을높여요#n#nDJ : #수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
 	                                   , 'category'               : 'People & Blogs'
@@ -237,8 +237,8 @@ def Upload2Youtube( dArgs , sFile ) :
 		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
 	sExe += " \"%s\"" % sFile
 
-	logger.debug( sExe )
 	logger.info( '---------------------------------------------------------------------' )
+	logger.debug( sExe )
 	return "asdfasdf"
 	nRtn = os.system( sExe )
 	if nRtn != 0 :
@@ -258,7 +258,7 @@ if __name__ == "__main__":
 	logger.info( 'KBS Radio Cool FM 89.1MHz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
 
 	# 방송정보 확인
-	if GetInfoAndStartDump( dCFG , False ) < 0 :
+	if GetInfoAndStartDump( dCFG , False )[0] < 0 :
 		sys.exit(-1)
 
 	# 계속 덤프
