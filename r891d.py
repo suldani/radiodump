@@ -79,7 +79,7 @@ def init_log(bFile,bScrn) :
 		logger.addHandler(log_file)
 	if bScrn :
 		log_scrn  = logging.StreamHandler()
-		log_scrn.setFormatter( logging.Formatter('%(message)s') )
+		log_scrn.setFormatter( logging.Formatter('%(asctime)s [%(lineno)03d:%(levelname)7s] %(message)s') )
 		logger.setLevel(logging.INFO)
 		logger.addHandler(log_scrn)
 	return logger
@@ -95,7 +95,7 @@ def init_cfg( file ) :
 	           , 'CFG_DAEMON_YN'     : 'N'
 	           , 'CFG_HB_MIN'        : 1
 	           , 'CFG_YOUTUBE_UP'    : 'N'
-	           , 'CFG_YOUTUBE_INFO'  : { 'title'                   : '악동뮤지션 수현의 볼륨을 높여요'
+	           , 'CFG_YOUTUBE_INFO'  : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
 	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 #볼륨을높여요#n#nDJ : #수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
 	                                   , 'category'               : 'People & Blogs'
 	                                   , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
@@ -107,10 +107,11 @@ def init_cfg( file ) :
 	                                   }
 	           }
 
-	try :
-		with open( file ) as rfile:
+	try: 
+		with open( file , encoding='utf-8' ) as rfile:
 			dCfgJson = json.load(rfile)
 			logger.info( "Load config file.(%s)" , file )
+
 	except :
 		with open( file , 'w') as wfile :
 			json.dump(dCfgJson, wfile)
@@ -182,7 +183,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
 	if bReady == False :
 		logger.info ( "---------------------------------------------------------------------" )
-		return( [ -3 , "" ] )
+		return( [ 0 , "" ] )
 
 
 	# 스트리밍 정보 설정
@@ -237,9 +238,9 @@ def Upload2Youtube( dArgs , sFile ) :
 		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
 	sExe += " \"%s\"" % sFile
 
+	logger.info( sExe )
 	logger.info( '---------------------------------------------------------------------' )
-	logger.debug( sExe )
-	return "asdfasdf"
+
 	nRtn = os.system( sExe )
 	if nRtn != 0 :
 		logger.info( "Upload Error[%d]. " % nRtn )
