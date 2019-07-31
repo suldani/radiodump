@@ -46,8 +46,8 @@ import logging.handlers
 import requests
 from pytz     import timezone
 
-DEF_C891D_URL = 'https://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v1.00.181123'
+DEF_C891D_URL = 'http://kbs-radio-891mhz-crawler.appspot.com'
+DEF_VERSION   = 'v1.10.190731'
 
 @atexit.register
 def byebye() :
@@ -88,12 +88,23 @@ def init_log(bFile,bScrn) :
 def init_cfg( file ) :
 	# 디폴트값
 	dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
-	           , 'CFG_REC_STT_TIME'  : '195520'
-	           , 'CFG_REC_END_TIME'  : '215800'
+	           , 'CFG_REC_STT_TIME'  : '195857'
+	           , 'CFG_REC_END_TIME'  : '215747'
 	           , 'CFG_TEMP_DIR'      : './'
 	           , 'CFG_TARGET_DIR'    : './'
 	           , 'CFG_DAEMON_YN'     : 'N'
-	           , 'CFG_HB_MIN'        : 1
+	           , 'CFG_HB_MIN'        : 1,
+	           , 'CFG_YOUTUBE_UP'    : 'N',
+	           , 'CFG_YOUTUBE_INFO'  : { 'title'                   : '악동뮤지션 수현의 볼륨을 높여요'
+	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 #볼륨을높여요#n#nDJ : #수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
+	                                   , 'category'               : 'People & Blogs'
+	                                   , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
+	                                   , 'default-language'       : 'ko'
+	                                   , 'default-audio-language' : 'ko'
+	                                   , 'privacy'                : 'private'
+	                                   , 'client-secrets'         : '.client_secrets.json'
+	                                   , 'credentials-file'       : '.youtube-upload-credentials.json'
+	                                   }
 	           }
 
 	try :
@@ -140,16 +151,16 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 			bExistFile = ( bExistFile or os.path.isfile( os.path.join( i , sExecFlnm ) ) )
 		if bExistFile == False :
 			logger.error( "(%s)가 없습니다. (%s) 에서 다운받은 후 (%s)를 같은 폴더에 위치하세요." , sExecFlnm , 'https://www.ffmpeg.org' , sExecFlnm )
-			return( -4 )
+			return( [ -4 , "" ] )
 
 	bora_html = requests.get( dCFG['DEF_C891D_URL'] , headers = {'User-Agent': 'r891d/'+dCFG['DEF_VERSION']})
 	if bora_html.status_code != 200 :
 		logger.error( "방송 정보를 가져오지 못했습니다." )
-		return( -1 )
+		return( [ -1 , "" ] )
 	dRadio891Data = json.loads(bora_html.text)
 	if int( dRadio891Data['result_no'] ) < 0 :
 		logger.error( dRadio891Data['result_msg'] )
-		return( -2 )
+		return( [ -2 , "" ] )
 
 	if bReady == False :
 		logger.info( '-----Notice %s--------------------------------------------' , dRadio891Data['cache_ddtm'] )
@@ -171,7 +182,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
 	if bReady == False :
 		logger.info ( "---------------------------------------------------------------------" )
-		return( 0 )
+		return( [ -3 , "" ] )
 
 
 	# 스트리밍 정보 설정
@@ -202,7 +213,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	logger.info( "Start Dumping. If you want to stop, press [q]..." )
 	if os.system( dRadio891Data['strm_call'] ) != 0 :
 		logger.error( "Radio strm_call       = [%s]" % dRadio891Data['strm_call'] )
-		return( -1000 )
+		( [ -1000 , "" ] )
 	logger.info( "Success Dumped. And... " )
 
 
@@ -213,7 +224,28 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		rtn_path = os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] )
 	logger.info( "File [%s]" , rtn_path )
 
-	return 0
+	return( [ 0 , rtn_path ] )
+
+
+def Upload2Youtube( dArgs , sFile ) :
+	dArgs['title'                 ] = sFile[2:8] + dArgs['title']
+	dArgs['recording-date'        ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
+#	dArgs['publish-at'            ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
+
+	sExe = os.path.join(os.path.dirname(os.path.realpath(__file__)),'youtube_upload.bat')
+	for sKey in dArgs.keys() :
+		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
+	sExe += " \"%s\"" % sFile
+
+	logger.debug( sExe )
+	logger.info( '---------------------------------------------------------------------' )
+	return "asdfasdf"
+	nRtn = os.system( sExe )
+	if nRtn != 0 :
+		logger.info( "Upload Error[%d]. " % nRtn )
+	else :
+		logger.info( "Upload Success[%d]. " % nRtn )
+	return nRtn
 
 
 if __name__ == "__main__":
@@ -239,10 +271,15 @@ if __name__ == "__main__":
 			continue
 
 		# 방송정보 확인 및 덤프 진행
-		if GetInfoAndStartDump( dCFG , True ) < 0 :
+		lRtn = GetInfoAndStartDump( dCFG , True )
+		if lRtn[0] < 0 :
 			continue
 
-		if dCFG['CFG_DAEMON_YN'] in ( 'N',  'n' ) :
+		# 녹화정보 업로드
+		if dCFG['CFG_YOUTUBE_UP'] in ( 'Y',  'y' ) :
+			Upload2Youtube( dCFG['CFG_YOUTUBE_INFO'] , lRtn[1] )
+
+		if dCFG['CFG_DAEMON_YN'] not in ( 'Y',  'y' ) :
 			break
 
 		logger.info( 'Waits for the next dumping...' )
