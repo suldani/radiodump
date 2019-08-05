@@ -11,6 +11,7 @@ KBS 라디오 89.1MHz 정보를 가져와 DirectScream으로 저장한다.
 시간을 정확하게 맞추고 싶다면 덤프시간을 15~20초정도 앞당길것
 2. 현재 보라는 540p 30f(2시간 덤프시 약 1GB)로 저장되나,
    종종 알 수 없는 이유 20f로 저장되는 경우가 있다.
+2-1. 19.08.05 보라는 720p 30f(2시간 덤프시 약 2GB)로 저장된다.
 3. 프로그램정보를 캐시서버에서 가져오기 때문에 KBS측의 부하는 없다.
 4. 자정이 걸리는 시간은 오류 있음.
 ---------------------------------------------------------------------
@@ -95,6 +96,7 @@ def init_cfg( file ) :
 	           , 'CFG_DAEMON_YN'     : 'N'
 	           , 'CFG_HB_MIN'        : 1
 	           , 'CFG_YOUTUBE_UP'    : 'N'
+	           , 'CFG_YOUTUBE_WM'    : ''
 	           , 'CFG_YOUTUBE_INFO'  : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
 	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#n#nDJ : 수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
 	                                   , 'category'               : 'People & Blogs'
@@ -199,9 +201,15 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 
 	if os.name == 'nt' and dCFG['CFG_YOUTUBE_UP'] in ( 'y', 'Y' ) :
 		if dRadio891Data['strm_optn_yn'  ] == 'Y' :
-			sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k -s 1280:720 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dRadio891Data['strm_ddtm'][:6] + " " + dRadio891Data[u'strm_title'] )
+			if dCFG['CFG_YOUTUBE_WM'] != '' :
+				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+			else :
+				sFfmpegOpt =                                                                                        "-c   copy                        "
 		else :
-			sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dRadio891Data['strm_ddtm'][:6] + " " + dRadio891Data[u'strm_title'] )
+			if dCFG['CFG_YOUTUBE_WM'] != '' :
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+			else :
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360"
 	else :
 		sFfmpegOpt = "-c copy"#-loglevel warning 
 
