@@ -5,7 +5,6 @@ _test*
 __pycache__/
 *.py[cod]
 *$py.class
-
 # C extensions
 *.so
 
@@ -111,3 +110,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 radio891.json
+test/

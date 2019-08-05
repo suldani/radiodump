@@ -47,7 +47,7 @@ import requests
 from pytz     import timezone
 
 DEF_C891D_URL = 'http://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v1.10.190731'
+DEF_VERSION   = 'v1.20.190805'
 
 @atexit.register
 def byebye() :
@@ -71,7 +71,7 @@ def init_log(bFile,bScrn) :
 	# 로거 생성
 	logger = logging.getLogger('main')
 
-	if bFile and os.name == 'posix':
+	if bFile :
 		# 파일 핸들러 생성
 		log_file  = logging.handlers.RotatingFileHandler( filename=sys.argv[0][:-2]+'log' , maxBytes=(100*1024) ) #100KB, 1회
 		log_file.setFormatter( logging.Formatter('%(asctime)s [%(lineno)03d:%(levelname)7s] %(message)s') )
@@ -79,7 +79,7 @@ def init_log(bFile,bScrn) :
 		logger.addHandler(log_file)
 	if bScrn :
 		log_scrn  = logging.StreamHandler()
-		log_scrn.setFormatter( logging.Formatter('%(asctime)s [%(lineno)03d:%(levelname)7s] %(message)s') )
+		log_scrn.setFormatter( logging.Formatter('%(message)s') )
 		logger.setLevel(logging.INFO)
 		logger.addHandler(log_scrn)
 	return logger
@@ -178,6 +178,9 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		elif dRadio891Data['schedule_table'][i]['sTime'] == dCFG['CFG_PROGRAM_STIME'] :
 			dRadio891Data['strm_title'  ] = dRadio891Data['schedule_table'][i]['title']
 			dRadio891Data['strm_optn_yn'] = dRadio891Data['schedule_table'][i]['opnYn']
+			#보라가 아닐 때 프로그램시작시각을 정각으로 맞춤
+			if dRadio891Data['strm_optn_yn'] == 'N' :
+				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_PROGRAM_STIME']
 			sTarget = '*'
 		if bReady == False :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
@@ -193,11 +196,19 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	dRadio891Data['strm_ddtm'] = dRadio891Data['cache_ddtm'][:7] + sCurrentTime
 	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".H264" if( dRadio891Data['strm_optn_yn'] == 'Y') else "" ) + ".AAC.ts"
 	dRadio891Data['strm_url' ] = ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
-	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y -t %d -c copy \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) ) #  -loglevel warning
+
+	if os.name == 'nt' and dCFG['CFG_YOUTUBE_UP'] in ( 'y', 'Y' ) :
+		if dRadio891Data['strm_optn_yn'  ] == 'Y' :
+			sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k -s 1280:720 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dRadio891Data['strm_ddtm'][:6] + " " + dRadio891Data[u'strm_title'] )
+		else :
+			sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dRadio891Data['strm_ddtm'][:6] + " " + dRadio891Data[u'strm_title'] )
+	else :
+		sFfmpegOpt = "-c copy"#-loglevel warning 
+
+	dRadio891Data['strm_call'] = ( 'ffmpeg -i \"%s\" -y -t %d %s \"%s\"' ) % ( dRadio891Data['strm_url'] , strm_time , sFfmpegOpt , os.path.join( dCFG['CFG_TEMP_DIR'] , dRadio891Data['strm_flnm'] ) )
 
 	logger.debug( "Radio cache_ddtm     = [%s]"    , dRadio891Data['cache_ddtm'    ]      )#cache서버
 	logger.debug( "Radio strm_url_audio = [%s...]" , dRadio891Data['strm_url_audio'][:40] )#cache서버
-	logger.debug( "Radio strm_url_360p  = [%s...]" , dRadio891Data['strm_url_360p' ][:40] )#cache서버
 	logger.debug( "Radio strm_url_540p  = [%s...]" , dRadio891Data['strm_url_540p' ][:40] )#cache서버
 	logger.debug( "Radio strm_call      = [%s]"    , dRadio891Data['strm_call'     ]      )#추가된json
 	logger.info ( "Radio strm_title     = [%s]"    , dRadio891Data['strm_title'    ]      )#cache서버
