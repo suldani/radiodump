@@ -89,14 +89,14 @@ def init_cfg( file ) :
 	# 디폴트값
 	dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
 	           , 'CFG_REC_STT_TIME'  : '195857'
-	           , 'CFG_REC_END_TIME'  : '215747'
+	           , 'CFG_REC_END_TIME'  : '215817'
 	           , 'CFG_TEMP_DIR'      : './'
 	           , 'CFG_TARGET_DIR'    : './'
 	           , 'CFG_DAEMON_YN'     : 'N'
 	           , 'CFG_HB_MIN'        : 1
 	           , 'CFG_YOUTUBE_UP'    : 'N'
 	           , 'CFG_YOUTUBE_INFO'  : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
-	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 #볼륨을높여요#n#nDJ : #수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
+	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#n#nDJ : 수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
 	                                   , 'category'               : 'People & Blogs'
 	                                   , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
 	                                   , 'default-language'       : 'ko'
@@ -171,7 +171,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	for i in range( len( dRadio891Data['schedule_table'] ) ):
 		sTarget = ''
 		if len(sys.argv) > 2 :
-			dRadio891Data['strm_title'  ] = 'KBS 89.1Mhz CoolFM Radio'
+			dRadio891Data['strm_title'  ] = 'KBS Cool FM 89.1Mhz'
 			dRadio891Data['strm_optn_yn'] = 'Y'
 			if dRadio891Data['schedule_table'][i]['sTime'] < dCFG['CFG_REC_END_TIME'] and dRadio891Data['schedule_table'][i]['eTime'] > dCFG['CFG_REC_END_TIME']  :
 				sTarget = '*'
@@ -240,9 +240,9 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 
 
 def Upload2Youtube( dArgs , sFile ) :
-	dArgs['title'                 ] = sFile[2:8] + dArgs['title']
-	dArgs['recording-date'        ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
-#	dArgs['publish-at'            ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
+	dArgs['title'         ] = sFile[2:8] + " " + dArgs['title']
+	dArgs['recording-date'] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
+#	dArgs['publish-at'    ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
 
 	sExe = os.path.join(os.path.dirname(os.path.realpath(__file__)),'youtube_upload.bat')
 	for sKey in dArgs.keys() :
@@ -267,7 +267,7 @@ if __name__ == "__main__":
 	dCFG   = init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
 	logger.info( '=============================== Start ===============================' )
-	logger.info( 'KBS Radio Cool FM 89.1MHz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
+	logger.info( 'KBS Cool FM 89.1Mhz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
 
 	# 방송정보 확인
 	if GetInfoAndStartDump( dCFG , False )[0] < 0 :
