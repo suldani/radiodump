@@ -202,12 +202,12 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	if os.name == 'nt' and dCFG['CFG_YOUTUBE_UP'] in ( 'y', 'Y' ) :
 		if dRadio891Data['strm_optn_yn'  ] == 'Y' :
 			if dCFG['CFG_YOUTUBE_WM'] != '' :
-				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
 			else :
 				sFfmpegOpt =                                                                                        "-c   copy                        "
 		else :
 			if dCFG['CFG_YOUTUBE_WM'] != '' :
-				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=fontfile=font.ttf:text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
 			else :
 				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360"
 	else :
