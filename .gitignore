@@ -75,7 +75,7 @@ docs/_build/
 
 # PyBuilder
 target/
-
+dist/
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -110,4 +110,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 radio891.json
+r891d.json
 test/

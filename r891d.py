@@ -252,7 +252,7 @@ def Upload2Youtube( dArgs , sFile ) :
 	dArgs['recording-date'] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
 #	dArgs['publish-at'    ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
 
-	sExe = os.path.join(os.path.dirname(os.path.realpath(__file__)),'youtube_upload.bat')
+	sExe = os.path.join(os.path.dirname(os.path.realpath(__file__)),'youtube-upload')
 	for sKey in dArgs.keys() :
 		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
 	sExe += " \"%s\"" % sFile
