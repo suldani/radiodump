@@ -257,12 +257,11 @@ def Upload2Youtube( dArgs , sFile ) :
 		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
 	sExe += " \"%s\"" % sFile
 
-	logger.info( sExe )
 	logger.info( '---------------------------------------------------------------------' )
 
 	nRtn = os.system( sExe )
 	if nRtn != 0 :
-		logger.info( "Upload Error[%d]. " % nRtn )
+		logger.error( "Upload Error[%d,%s]. " % ( nRtn , sExe ) )
 	else :
 		logger.info( "Upload Success[%d]. " % nRtn )
 	return nRtn
