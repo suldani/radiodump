@@ -81,7 +81,7 @@ def init_log(bFile,bScrn) :
 	if bScrn :
 		log_scrn  = logging.StreamHandler()
 		log_scrn.setFormatter( logging.Formatter('%(message)s') )
-		logger.setLevel(logging.INFO)
+		logger.setLevel(logging.DEBUG)
 		logger.addHandler(log_scrn)
 	return logger
 
@@ -196,7 +196,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 			#보라가 아닐 때 프로그램시작시각을 오디오 시작 시간으로 변경
 			if dRadio891Data['strm_optn_yn'] == 'N' :
 				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_AUD_STT_TIME']
-				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_AUD_END_TIME']
+				dCFG['CFG_REC_END_TIME'] = dCFG['CFG_AUD_END_TIME']
 			sTarget = '*'
 		if bReady == False :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
@@ -217,13 +217,13 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	if os.name == 'nt' and ( 'CFG_REC_WATER_MK' in dCFG or 'CFG_AUD_WATER_MK' in dCFG ):
 		if dRadio891Data['strm_optn_yn'  ] == 'Y' :
 			if dCFG['CFG_REC_WATER_MK'] != '' :
-				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_REC_WATER_MK'] )
+				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_REC_WATER_MK'] )
 			else :
 				sFfmpegOpt =                                                                                        "-c   copy                        "
 		else :
 			if dCFG['CFG_AUD_WATER_MK'] != '' :
-#				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_AUD_WATER_MK'] )
-				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=400:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontsize=52:x=(w-tw)/2:y=h-124" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] )
+#				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_AUD_WATER_MK'] )
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=400:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-124" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] )
 			else :
 				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360"
 	else :
@@ -319,8 +319,8 @@ if __name__ == "__main__":
 			continue
 
 		# 녹화정보 업로드
-#		if 'CFG_YOUTUBE' in dCFG :
-#			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
+		if 'CFG_YOUTUBE' in dCFG :
+			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
 
 		if dCFG['CFG_DAEMON_YN'] not in ( 'Y',  'y' ) :
 			break
