@@ -48,7 +48,7 @@ import requests
 from pytz     import timezone
 
 DEF_C891D_URL = 'http://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v1.20.190805'
+DEF_VERSION   = 'v1.21.190814'
 
 @atexit.register
 def byebye() :
@@ -89,23 +89,36 @@ def init_log(bFile,bScrn) :
 def init_cfg( file ) :
 	# 디폴트값
 	dCfgJson = { 'CFG_PROGRAM_STIME' : '200000'
-	           , 'CFG_REC_STT_TIME'  : '195857'
-	           , 'CFG_REC_END_TIME'  : '215817'
+	           , 'CFG_REC_STT_TIME'  : '195920'
+	           , 'CFG_REC_END_TIME'  : '215830'
+	           , 'CFG_AUD_STT_TIME'  : '200000'
+	           , 'CFG_AUD_END_TIME'  : '215830'
 	           , 'CFG_TEMP_DIR'      : './'
 	           , 'CFG_TARGET_DIR'    : './'
 	           , 'CFG_DAEMON_YN'     : 'N'
 	           , 'CFG_HB_MIN'        : 1
-	           , 'CFG_YOUTUBE_UP'    : 'N'
-	           , 'CFG_YOUTUBE_WM'    : ''
-	           , 'CFG_YOUTUBE_INFO'  : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
-	                                   , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#n#nDJ : 수현of악동뮤지션#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
-	                                   , 'category'               : 'People & Blogs'
-	                                   , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
-	                                   , 'default-language'       : 'ko'
-	                                   , 'default-audio-language' : 'ko'
-	                                   , 'privacy'                : 'private'
-	                                   , 'client-secrets'         : '.client_secrets.json'
-	                                   , 'credentials-file'       : '.youtube-upload-credentials.json'
+	           , 'CFG_REC_WATER_MK'  : ''
+	           , 'CFG_AUD_WATER_MK'  : ''
+	           , 'CFG_YOUTUBE'       : { 'STITLE' : [ '[행복하오니]'
+	                                                , '[뭘 좋아할지 몰라서 주제를 정해봤어]'
+	                                                , '[TMI 퀴즈]'
+	                                                , '[200% 초대석]'
+	                                                , '[오늘은 왠지 하림과 낙타]'
+	                                                , '[스튜디오]'
+	                                                , '[주간볼륨]'
+	                                                ]
+	                                   , 'INFO'   : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
+	                                                , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#n#nDJ : 이수현(악동뮤지션)#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
+	                                                , 'category'               : 'People & Blogs'
+	                                                , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
+	                                                , 'default-language'       : 'ko'
+	                                                , 'default-audio-language' : 'ko'
+	                                                , 'privacy'                : 'private'
+	                                                , 'client-secrets'         : '.client_secrets.json'
+	                                                , 'credentials-file'       : '.youtube-upload-credentials.json'
+	                                                }
+	                                   , 'UPLOAD_AUD' : 'public'
+	                                   , 'UPLOAD_VID' : 'unlisted'
 	                                   }
 	           }
 
@@ -180,9 +193,10 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		elif dRadio891Data['schedule_table'][i]['sTime'] == dCFG['CFG_PROGRAM_STIME'] :
 			dRadio891Data['strm_title'  ] = dRadio891Data['schedule_table'][i]['title']
 			dRadio891Data['strm_optn_yn'] = dRadio891Data['schedule_table'][i]['opnYn']
-			#보라가 아닐 때 프로그램시작시각을 정각으로 맞춤
+			#보라가 아닐 때 프로그램시작시각을 오디오 시작 시간으로 변경
 			if dRadio891Data['strm_optn_yn'] == 'N' :
-				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_PROGRAM_STIME']
+				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_AUD_STT_TIME']
+				dCFG['CFG_REC_STT_TIME'] = dCFG['CFG_AUD_END_TIME']
 			sTarget = '*'
 		if bReady == False :
 			logger.info( "[%1s]  %s  %s   %s   %s" , sTarget , dRadio891Data['schedule_table'][i]['sTime'], dRadio891Data['schedule_table'][i]['eTime'] , dRadio891Data['schedule_table'][i]['opnYn'] , dRadio891Data['schedule_table'][i]['title'] )
@@ -190,6 +204,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		logger.info ( "---------------------------------------------------------------------" )
 		return( [ 0 , "" ] )
 
+#	dRadio891Data['strm_optn_yn'  ] ='N'
 
 	# 스트리밍 정보 설정
 	sCurrentTime = datetime.datetime.now(timezone('Asia/Seoul')).strftime('%H%M%S')
@@ -199,15 +214,16 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".H264" if( dRadio891Data['strm_optn_yn'] == 'Y') else "" ) + ".AAC.ts"
 	dRadio891Data['strm_url' ] = ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
 
-	if os.name == 'nt' and dCFG['CFG_YOUTUBE_UP'] in ( 'y', 'Y' ) :
+	if os.name == 'nt' and ( 'CFG_REC_WATER_MK' in dCFG or 'CFG_AUD_WATER_MK' in dCFG ):
 		if dRadio891Data['strm_optn_yn'  ] == 'Y' :
-			if dCFG['CFG_YOUTUBE_WM'] != '' :
-				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+			if dCFG['CFG_REC_WATER_MK'] != '' :
+				sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_REC_WATER_MK'] )
 			else :
 				sFfmpegOpt =                                                                                        "-c   copy                        "
 		else :
-			if dCFG['CFG_YOUTUBE_WM'] != '' :
-				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_YOUTUBE_WM'] )
+			if dCFG['CFG_AUD_WATER_MK'] != '' :
+#				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_AUD_WATER_MK'] )
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=400:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontsize=52:x=(w-tw)/2:y=h-124" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] )
 			else :
 				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360"
 	else :
@@ -247,14 +263,22 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	return( [ 0 , rtn_path ] )
 
 
-def Upload2Youtube( dArgs , sFile ) :
-	dArgs['title'         ] = sFile[2:8] + " " + dArgs['title']
-	dArgs['recording-date'] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
-#	dArgs['publish-at'    ] = datetime.datetime.now().replace(microsecond=0).isoformat() + ".0Z"
+def Upload2Youtube( dYtb , sFile ) :
+	oDdTmNow = datetime.datetime.now()
+	nWeekday = (oDdTmNow).weekday()
 
+	dYtb['INFO']['title'         ] = '%s %s %s' % ( sFile[2:8] , dYtb['INFO']['title'] , dYtb['STITLE'][nWeekday].split(']')[1].strip() )
+	dYtb['INFO']['description'   ] = '%s#n%s' % ( dYtb['STITLE'][nWeekday] , dYtb['INFO']['description'] )
+	dYtb['INFO']['recording-date'] = (oDdTmNow).replace(microsecond=0).isoformat() + ".0Z"
+#	dYtb['INFO']['publish-at'    ] = (oDdTmNow).replace(microsecond=0).isoformat() + ".0Z"
+	if 'H264' in sFile :
+		dYtb['INFO']['privacy'] = dCFG['CFG_YOUTUBE']['UPLOAD_VID']
+	else :
+		dYtb['INFO']['privacy'] = dCFG['CFG_YOUTUBE']['UPLOAD_AUD']
+	
 	sExe = os.path.join(os.path.dirname(os.path.realpath(__file__)),'youtube-upload')
-	for sKey in dArgs.keys() :
-		sExe += " --%s=\"%s\"" % ( sKey , dArgs[sKey] )
+	for sKey in dYtb['INFO'].keys() :
+		sExe += " --%s=\"%s\"" % ( sKey , dYtb['INFO'][sKey] )
 	sExe += " \"%s\"" % sFile
 
 	logger.info( '---------------------------------------------------------------------' )
@@ -295,8 +319,8 @@ if __name__ == "__main__":
 			continue
 
 		# 녹화정보 업로드
-		if dCFG['CFG_YOUTUBE_UP'] in ( 'Y',  'y' ) :
-			Upload2Youtube( dCFG['CFG_YOUTUBE_INFO'] , lRtn[1] )
+#		if 'CFG_YOUTUBE' in dCFG :
+#			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
 
 		if dCFG['CFG_DAEMON_YN'] not in ( 'Y',  'y' ) :
 			break
