@@ -108,9 +108,9 @@ def init_cfg( file ) :
 	                                                , '[주간볼륨]'
 	                                                ]
 	                                   , 'INFO'   : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
-	                                                , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#n#nDJ : 이수현(악동뮤지션)#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
-	                                                , 'category'               : 'People & Blogs'
-	                                                , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요'
+	                                                , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#nDJ : #수현of악동뮤지션(AKMU SUHYUN)#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
+	                                                , 'category'               : 'Entertainment'
+	                                                , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요, AKMU, SUHYUN, AKDONG MUSICIAN'
 	                                                , 'default-language'       : 'ko'
 	                                                , 'default-audio-language' : 'ko'
 	                                                , 'privacy'                : 'private'
