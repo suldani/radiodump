@@ -99,27 +99,27 @@ def init_cfg( file ) :
 	           , 'CFG_HB_MIN'        : 1
 	           , 'CFG_REC_WATER_MK'  : ''
 	           , 'CFG_AUD_WATER_MK'  : ''
-	           , 'CFG_YOUTUBE'       : { 'STITLE' : [ '[행복하오니]'
-	                                                , '[뭘 좋아할지 몰라서 주제를 정해봤어]'
-	                                                , '[TMI 퀴즈]'
-	                                                , '[200% 초대석]'
-	                                                , '[오늘은 왠지 하림과 낙타]'
-	                                                , '[스튜디오]'
-	                                                , '[주간볼륨]'
-	                                                ]
-	                                   , 'INFO'   : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
-	                                                , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#nDJ : #수현of악동뮤지션(AKMU SUHYUN)#n연출 : 정혜진, 윤일영#n작가 : 김희진, 류민아#nhttp://program.kbs.co.kr/2fm/radio/svolume'
-	                                                , 'category'               : 'Entertainment'
-	                                                , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요, AKMU, SUHYUN, AKDONG MUSICIAN'
-	                                                , 'default-language'       : 'ko'
-	                                                , 'default-audio-language' : 'ko'
-	                                                , 'privacy'                : 'private'
-	                                                , 'client-secrets'         : '.client_secrets.json'
-	                                                , 'credentials-file'       : '.youtube-upload-credentials.json'
-	                                                }
-	                                   , 'UPLOAD_AUD' : 'public'
-	                                   , 'UPLOAD_VID' : 'unlisted'
-	                                   }
+#	           , 'CFG_YOUTUBE'       : { 'STITLE' : [ '[행복하오니]'
+#	                                                , '[뭘 좋아할지 몰라서 주제를 정해봤어]'
+#	                                                , '[TMI 퀴즈]'
+#	                                                , '[200% 초대석]'
+#	                                                , '[오늘은 왠지 하림과 낙타]'
+#	                                                , '[스튜디오]'
+#	                                                , '[주간볼륨]'
+#	                                                ]
+#	                                   , 'INFO'   : { 'title'                  : '악동뮤지션 수현의 볼륨을 높여요'
+#	                                                , 'description'            : 'KBS Cool FM 89.1MHz 매일 20:00-22:00 볼륨을높여요#nDJ : #수현of악동뮤지션(AKMU SUHYUN)#n연출 : 정혜진, 윤일영 / 작가 : 김희진, 류민아#nHP : http://program.kbs.co.kr/2fm/radio/svolume#nIG : https://instagram.com/volumeup891#n#악동뮤지션수현의볼륨을높여요 #수현의볼륨을높여요 #kbsradio'
+#	                                                , 'category'               : 'Entertainment'
+#	                                                , 'tags'                   : '악동뮤지션, 수현, 이수현, 볼륨을 높여요, AKMU, SUHYUN, AKDONG MUSICIAN'
+#	                                                , 'default-language'       : 'ko'
+#	                                                , 'default-audio-language' : 'ko'
+#	                                                , 'privacy'                : 'private'
+#	                                                , 'client-secrets'         : '.client_secrets.json'
+#	                                                , 'credentials-file'       : '.youtube-upload-credentials.json'
+#	                                                }
+#	                                   , 'UPLOAD_AUD' : 'unlisted'
+#	                                   , 'UPLOAD_VID' : 'unlisted'
+#	                                   }
 	           }
 
 	try: 
@@ -221,7 +221,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 			else :
 				sFfmpegOpt =                                                                                        "-c   copy                        "
 		else :
-			if dCFG['CFG_AUD_WATER_MK'] != '' :
+			if dCFG['CFG_AUD_WATER_MK'] != '' and 'CFG_YOUTUBE' in dCFG:
 #				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_AUD_WATER_MK'] )
 				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=400:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-124" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] )
 			else :
@@ -267,7 +267,7 @@ def Upload2Youtube( dYtb , sFile ) :
 	oDdTmNow = datetime.datetime.now()
 	nWeekday = (oDdTmNow).weekday()
 
-	dYtb['INFO']['title'         ] = '%s %s %s' % ( sFile[2:8] , dYtb['INFO']['title'] , dYtb['STITLE'][nWeekday].split(']')[1].strip() )
+	dYtb['INFO']['title'         ] = '%s %s %s' % ( sFile[2:8] , dYtb['INFO']['title'] , dYtb['STITLE'][nWeekday].split(']')[1].replace('#','') )
 	dYtb['INFO']['description'   ] = '%s#n%s' % ( dYtb['STITLE'][nWeekday] , dYtb['INFO']['description'] )
 	dYtb['INFO']['recording-date'] = (oDdTmNow).replace(microsecond=0).isoformat() + ".0Z"
 #	dYtb['INFO']['publish-at'    ] = (oDdTmNow).replace(microsecond=0).isoformat() + ".0Z"
