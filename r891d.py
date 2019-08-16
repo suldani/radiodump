@@ -223,7 +223,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 		else :
 			if dCFG['CFG_AUD_WATER_MK'] != '' and 'CFG_YOUTUBE' in dCFG:
 #				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=32:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20" % ( dCFG['CFG_AUD_WATER_MK'] )
-				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=400:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-124" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] )
+				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=370:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-154,drawtext=text=\"20%s.%s.%s@volumeup891\":fontcolor=gray:fontfile=font.ttf:fontsize=16:x=w-text_w-10:y=h-text_h-10" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] , dRadio891Data['strm_ddtm'][0:2] , dRadio891Data['strm_ddtm'][2:4] , dRadio891Data['strm_ddtm'][4:6] )
 			else :
 				sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360"
 	else :
