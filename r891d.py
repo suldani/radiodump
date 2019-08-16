@@ -311,8 +311,8 @@ if __name__ == "__main__":
 			continue
 
 		# 녹화정보 업로드
-#		if 'CFG_YOUTUBE' in dCFG :
-#			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
+		if 'CFG_YOUTUBE' in dCFG :
+			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
 
 		if dCFG['CFG_DAEMON_YN'] not in ( 'Y',  'y' ) :
 			break
