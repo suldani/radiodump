@@ -99,6 +99,7 @@ def init_cfg( file ) :
 	           , 'CFG_HB_MIN'        : 1
 #	           , 'CFG_REC_WATER_MK'  : ''
 #	           , 'CFG_AUD_WATER_MK'  : ''
+#	           , 'CFG_YOUTUBE_YN'    : ''
 #	           , 'CFG_YOUTUBE'       : { 'STITLE' : [ '[행복하오니]'
 #	                                                , '[뭘 좋아할지 몰라서 주제를 정해봤어]'
 #	                                                , '[TMI 퀴즈]'
@@ -214,9 +215,9 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	dRadio891Data['strm_flnm'] = dRadio891Data['strm_ddtm'] + " " + dRadio891Data[u'strm_title'] + ( ".H264" if( dRadio891Data['strm_optn_yn'] == 'Y') else "" ) + ".AAC.ts"
 	dRadio891Data['strm_url' ] = ( dRadio891Data['strm_url_540p'] if( dRadio891Data['strm_optn_yn'] == 'Y') else dRadio891Data['strm_url_audio'] )
 
-	if   os.name == 'nt' and 'CFG_YOUTUBE' in dCFG and dRadio891Data['strm_optn_yn'  ] == 'Y' and dCFG['CFG_REC_WATER_MK'] != '' :
+	if   os.name == 'nt' and 'CFG_YOUTUBE_YN' in dCFG and dCFG['CFG_YOUTUBE_YN'] in ( 'Y',  'y' ) and dRadio891Data['strm_optn_yn'  ] == 'Y' and dCFG['CFG_REC_WATER_MK'] != '' :
 		sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s %s@volumeup891\":fontcolor=white:fontfile=font.ttf:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20"                                                                                                     % ( dRadio891Data['strm_title'] + dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_REC_WATER_MK'] == 'STITLE' ) else dCFG['CFG_REC_WATER_MK'] , dRadio891Data['strm_ddtm'][:6] )
-	elif os.name == 'nt' and 'CFG_YOUTUBE' in dCFG and dRadio891Data['strm_optn_yn'  ] == 'N' and dCFG['CFG_AUD_WATER_MK'] != '' :
+	elif os.name == 'nt' and 'CFG_YOUTUBE_YN' in dCFG and dCFG['CFG_YOUTUBE_YN'] in ( 'Y',  'y' ) and dRadio891Data['strm_optn_yn'  ] == 'N' and dCFG['CFG_AUD_WATER_MK'] != '' :
 		sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=370:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-154,drawtext=text=\"%s@volumeup891\":fontcolor=gray:fontfile=font.ttf:fontsize=16:x=w-text_w-10:y=h-text_h-10" % ( dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() if( dCFG['CFG_AUD_WATER_MK'] == 'STITLE' ) else dCFG['CFG_AUD_WATER_MK'] , dRadio891Data['strm_ddtm'][:6] )
 	else :
 		sFfmpegOpt = "-c copy"#-loglevel warning 
@@ -311,7 +312,7 @@ if __name__ == "__main__":
 			continue
 
 		# 녹화정보 업로드
-		if 'CFG_YOUTUBE' in dCFG :
+		if 'CFG_YOUTUBE_YN' in dCFG and dCFG['CFG_YOUTUBE_YN'] in ( 'Y',  'y' ) :
 			Upload2Youtube( dCFG['CFG_YOUTUBE'] , lRtn[1] )
 
 		if dCFG['CFG_DAEMON_YN'] not in ( 'Y',  'y' ) :
