@@ -13,7 +13,6 @@ KBS 라디오 89.1MHz 정보를 가져와 DirectScream으로 저장한다.
    종종 알 수 없는 이유 20f로 저장되는 경우가 있다.
 2-1. 19.08.05 보라는 720p 30f(2시간 덤프시 약 2GB)로 저장된다.
 3. 프로그램정보를 캐시서버에서 가져오기 때문에 KBS측의 부하는 없다.
-4. 자정이 걸리는 시간은 오류 있음.
 ---------------------------------------------------------------------
 리눅스 실행
 1. 대몬 : nohup r891d.py >/dev/null 2>&1 &
@@ -48,7 +47,7 @@ import requests
 from pytz     import timezone
 
 DEF_C891D_URL = 'http://kbs-radio-891mhz-crawler.appspot.com'
-DEF_VERSION   = 'v1.23.190819'
+DEF_VERSION   = 'v1.24.190820'
 
 @atexit.register
 def byebye() :
@@ -187,7 +186,7 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 	for i in range( len( dRadio891Data['schedule_table'] ) ):
 		sTarget = ''
 		if len(sys.argv) > 2 :
-			dRadio891Data['strm_title'  ] = 'KBS Cool FM 89.1Mhz'
+			dRadio891Data['strm_title'  ] = 'KBS Cool FM 89.1MHz'
 			dRadio891Data['strm_optn_yn'] = 'Y'
 			if dRadio891Data['schedule_table'][i]['sTime'] < dCFG['CFG_REC_END_TIME'] and dRadio891Data['schedule_table'][i]['eTime'] > dCFG['CFG_REC_END_TIME']  :
 				sTarget = '*'
@@ -217,9 +216,9 @@ def GetInfoAndStartDump( dCFG , bReady ) :
 
 	try :
 		if   os.name == 'nt' and dRadio891Data['strm_optn_yn'  ] == 'Y' and dCFG['CFG_REC_WATER_MK'] != '' :
-			sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20"                                                                                                        % ( dCFG['CFG_REC_WATER_MK'] if( 'STITLE' not in dCFG['CFG_REC_WATER_MK'] ) else dRadio891Data['strm_ddtm'][:6] + ' ' + dRadio891Data['strm_title'] + dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1] + dCFG['CFG_REC_WATER_MK'][6:] )
+			sFfmpegOpt =                                                                                        "-c:a copy -b:v 2000k             -vf drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=16:box=1:boxcolor=black@0.5:boxborderw=5:x=w-text_w-20:y=h-text_h-20"                                                                                                                  % ( dCFG['CFG_REC_WATER_MK'] if( 'STITLE' not in dCFG['CFG_REC_WATER_MK'] ) else dRadio891Data['strm_ddtm'][:6] + ' ' + dRadio891Data['strm_title'] + dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1] + dCFG['CFG_REC_WATER_MK'][6:] )
 		elif os.name == 'nt' and dRadio891Data['strm_optn_yn'  ] == 'N' and dCFG['CFG_AUD_WATER_MK'] != '' :
-			sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  300k -s  640:360 -vf drawbox=y=370:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=gray:fontfile=font.ttf:fontsize=16:x=w-text_w-10:y=h-text_h-10,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-154" % ( dCFG['CFG_REC_WATER_MK'] if( 'STITLE' not in dCFG['CFG_AUD_WATER_MK'] ) else dRadio891Data['strm_ddtm'][:6] + ' ' + dRadio891Data['strm_title'] + dCFG['CFG_AUD_WATER_MK'][6:] , '' if( 'STITLE' not in dCFG['CFG_AUD_WATER_MK'] ) else dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() )
+			sFfmpegOpt = "-loop 1 -framerate 1 -i cover.jpg -c:v libx264 -preset slow -tune stillimage -shortest -c:a copy -b:v  250k -s 1280:720 -vf drawbox=y=370:color=black@0.4:width=iw:height=80:t=fill,drawtext=text=\"%s\":fontcolor=gray:fontfile=font.ttf:fontsize=16:x=w-text_w-10:y=h-text_h-10:borderw=1,drawtext=text=\"%s\":fontcolor=white:fontfile=font.ttf:fontsize=52:x=(w-tw)/2:y=h-154" % ( dCFG['CFG_REC_WATER_MK'] if( 'STITLE' not in dCFG['CFG_AUD_WATER_MK'] ) else dRadio891Data['strm_ddtm'][:6] + ' ' + dRadio891Data['strm_title'] + dCFG['CFG_AUD_WATER_MK'][6:] , '' if( 'STITLE' not in dCFG['CFG_AUD_WATER_MK'] ) else dCFG['CFG_YOUTUBE']['STITLE'][datetime.datetime.now().weekday()].split(']')[1].strip() )
 		else :
 			sFfmpegOpt = "-c copy"#-loglevel warning 
 	except :
@@ -294,7 +293,7 @@ if __name__ == "__main__":
 	dCFG   = init_cfg(os.path.splitext(sys.argv[0])[0] + '.json')
 
 	logger.info( '=============================== Start ===============================' )
-	logger.info( 'KBS Cool FM 89.1Mhz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
+	logger.info( 'KBS Cool FM 89.1MHz Streaming Dumper (%s)',dCFG['DEF_VERSION'] )
 
 	# 방송정보 확인
 	if GetInfoAndStartDump( dCFG , False )[0] < 0 :
