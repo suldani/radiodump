@@ -14,7 +14,7 @@
 # gcloud app deploy app.yaml --project  kbs-radio-891mhz-crawler
 #######################################################################
 cfg_bora_url = 'http://onair.kbs.co.kr/?sname=onair&stype=live&ch_code=25&ch_type=radioList'
-info_msg     = ['I expect AKMU to comeback this fall.'
+info_msg     = ['Updated 2019.11.07:KBS\'s streaming format is changed.'
                ,'Updated 2019.07.26:get more infomation...'
                ,'Updated 2019.02.14:KBS\'s streaming format is changed.'
                ]
@@ -116,8 +116,8 @@ def get_pgm_info() :
 
 
 	try :
-		subtitle_rinf = re.findall(r'var channelinfoListJson.*({\\\\\\"program_ch_code\\\\\\":\\\\\\"25.*?ad_del_yn.*?\})', bora_soup.text)[0]
-		subtitle_jinf = json.loads(subtitle_rinf.replace('\\\\\\"','\"').replace('\\\\\\\\u','\\u').replace('\\\\\\\\/','/'))
+		subtitle_rinf = re.findall(r'var channelinfoListJson.*({\\\"program_ch_code\\\":\\\"25.*?ad_del_yn.*?\})', bora_soup.text)[0]
+		subtitle_jinf = json.loads(subtitle_rinf.replace('\\"','\"').replace('\\\\u','\\u').replace(r'\\',''))
 
 		dNow = { 'program_code'     : subtitle_jinf['program_code']
 		       , 'program_title'    : subtitle_jinf['program_title']
@@ -128,8 +128,10 @@ def get_pgm_info() :
 		       , 'open_studio_yn'   : subtitle_jinf['radio_open_studio_yn']
 			   }
 	except :
-		print( '실시간 방송 정보 파싱중 실패했습니다.' )
-		dNow.clear()
+		rec891json['result_no'     ] = '-4'
+		rec891json['result_msg'    ] = '실시간 방송 정보(방송상세정보) 파싱중 실패했습니다.'
+		print( "%s %s" % ( rec891json['result_no'] , rec891json['result_msg'] ) )
+		dNow = {}
 
 	rec891json = { 'result_no'      : '0'
 				 , 'result_msg'     : 'OK'
